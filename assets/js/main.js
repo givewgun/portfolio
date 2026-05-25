@@ -23,12 +23,40 @@
     repo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
   };
 
-  /* ---- Org logo (favicon w/ initials fallback) ---------------------------- */
-  function orgLogo(domain, name) {
+  /* ---- Org logo (local file or favicon providers, initials fallback) ------ */
+  // Advances an <img> through its candidate sources on error; when all fail,
+  // swaps the badge to an initials fallback. Exposed for inline onerror.
+  window.__logoErr = function (img) {
+    try {
+      const srcs = JSON.parse(img.getAttribute("data-srcs") || "[]");
+      const next = parseInt(img.getAttribute("data-i") || "0", 10) + 1;
+      if (next < srcs.length) {
+        img.setAttribute("data-i", String(next));
+        img.src = srcs[next];
+        return;
+      }
+    } catch (e) {}
+    const span = img.parentNode;
+    if (span) {
+      span.classList.add("org-logo--fallback");
+      span.textContent = img.getAttribute("data-initials") || "";
+    }
+  };
+
+  function orgLogo(logo, name) {
     const initials = String(name).trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-    if (!domain) return `<span class="org-logo org-logo--fallback">${esc(initials)}</span>`;
-    const src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
-    return `<span class="org-logo"><img src="${esc(src)}" alt="${esc(name)} logo" loading="lazy" onerror="this.parentNode.classList.add('org-logo--fallback');this.parentNode.textContent='${esc(initials)}';"></span>`;
+    if (!logo) return `<span class="org-logo org-logo--fallback">${esc(initials)}</span>`;
+    // A path or URL ending in an image extension is used directly; otherwise
+    // treat `logo` as a domain and try favicon providers in order.
+    const isImg = logo.includes("/") || /\.(png|jpe?g|svg|webp|ico|gif)$/i.test(logo);
+    const srcs = isImg
+      ? [logo]
+      : [
+          `https://icons.duckduckgo.com/ip3/${logo}.ico`,
+          `https://www.google.com/s2/favicons?domain=${encodeURIComponent(logo)}&sz=128`,
+        ];
+    const data = esc(JSON.stringify(srcs));
+    return `<span class="org-logo"><img src="${esc(srcs[0])}" data-srcs='${data}' data-i="0" data-initials="${esc(initials)}" alt="${esc(name)} logo" loading="lazy" onerror="window.__logoErr(this)"></span>`;
   }
 
   /* ---- Tiny DOM helpers --------------------------------------------------- */

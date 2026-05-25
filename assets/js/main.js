@@ -316,16 +316,27 @@
     { id: "arcane", label: "Arcane", icon: "wand" },
   ];
 
+  // RPG wording for the Arcane theme. Static labels in data.js are the instant
+  // fallback; arcane.js may supply fresher Gemini-generated wording at runtime
+  // (runtimeLabels) and a per-summon "Parley" flavor (lastParley). Only the
+  // wording/labels change — never the real content.
+  let runtimeLabels = null;
+  let lastParley = null;
+
   // Swap nav + section labels to their Arcane (RPG) variants when active,
   // restoring the originals otherwise. Originals are cached on first run.
   function applyThemeLabels(theme) {
     const arcane = theme === "arcane";
-    const map = D.arcaneLabels || {};
+    const base = D.arcaneLabels || {};
+    const dyn = runtimeLabels || {};
+    const pick = (id, key) => {
+      if (!arcane) return null;
+      return (dyn[id] && dyn[id][key]) || (base[id] && base[id][key]) || null;
+    };
     const swap = (el, key, id) => {
       if (!el) return;
       if (el.dataset.orig === undefined) el.dataset.orig = el.textContent;
-      const override = arcane && map[id] && map[id][key];
-      el.textContent = override || el.dataset.orig;
+      el.textContent = pick(id, key) || el.dataset.orig;
     };
     document.querySelectorAll("[data-nav] a").forEach((a) => {
       swap(a, "nav", a.getAttribute("href").slice(1));
@@ -334,6 +345,20 @@
       swap(sec.querySelector(".section__kicker"), "kicker", sec.id);
       swap(sec.querySelector(".section__title") || sec.querySelector(".contact__title"), "title", sec.id);
     });
+    applyParleyFlavor(arcane);
+  }
+
+  // The contact ("Parley") section gets a fresh RPG invitation each summon.
+  function applyParleyFlavor(arcane) {
+    const titleEl = document.querySelector(".contact__title");
+    const textEl = document.querySelector(".contact__text");
+    if (textEl && textEl.dataset.orig === undefined) textEl.dataset.orig = textEl.textContent;
+    if (arcane && lastParley) {
+      if (titleEl && lastParley.title) titleEl.textContent = lastParley.title;
+      if (textEl && lastParley.text) textEl.textContent = lastParley.text;
+    } else if (!arcane && textEl) {
+      textEl.textContent = textEl.dataset.orig;
+    }
   }
 
   function initTheme() {
@@ -510,6 +535,22 @@
       }
     });
   }
+
+  // Bridge for arcane.js: apply Gemini-generated RPG wording at runtime.
+  // Both take effect immediately only while the Arcane theme is active.
+  const isArcane = () => document.documentElement.getAttribute("data-theme") === "arcane";
+  window.PortfolioArcane = {
+    setLabels(map) {
+      if (!map || typeof map !== "object") return;
+      runtimeLabels = map;
+      if (isArcane()) applyThemeLabels("arcane");
+    },
+    setParley(p) {
+      if (!p || typeof p !== "object") return;
+      lastParley = p;
+      if (isArcane()) applyThemeLabels("arcane");
+    },
+  };
 
   /* ---- Boot --------------------------------------------------------------- */
   document.addEventListener("DOMContentLoaded", () => {

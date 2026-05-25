@@ -75,6 +75,14 @@ and a floating **d20 reroll button** (bottom-right) regenerates on demand.
 Tune the prompt/scenes in `assets/js/arcane.js`, and the RPG-flavored section
 labels in the `arcaneLabels` map in `data.js`.
 
+When the Gemini Worker is configured, Arcane also **rewrites the section
+wording** (nav/kicker/title) in RPG style via `/api/arcane-text`, and the
+**Parley** (contact) section gets a fresh "call to parley" invitation that
+**regenerates on every summon** — just like the background. Only the
+wording/labels change; the real content (job history, skills, links) is never
+touched. If the Worker or key is missing, it silently falls back to the static
+`arcaneLabels` in `data.js`.
+
 ### Where the image comes from
 
 `arcane.js` tries two sources, in order, then falls back to the d20 motif:
@@ -92,12 +100,16 @@ labels in the `arcaneLabels` map in `data.js`.
 2. Add it as a Worker secret — in the Cloudflare dashboard
    (Workers → portfolio → Settings → Variables and Secrets) add
    `GEMINI_API_KEY`, or run `npx wrangler secret put GEMINI_API_KEY`.
-3. (Optional) set `GEMINI_IMAGE_MODEL` if the default image model changes.
+3. (Optional) set `GEMINI_IMAGE_MODEL` / `GEMINI_TEXT_MODEL` if the default
+   models change.
 4. For local dev, copy `.dev.vars.example` to `.dev.vars` and run
    `npx wrangler dev`.
 
-If the key is missing or the call fails, the Worker returns a non-2xx response
-and the browser silently falls back to Pollinations — so nothing breaks.
+The same `GEMINI_API_KEY` powers both `/api/arcane-image` (background, paid
+image model) and `/api/arcane-text` (RPG wording, free text model). If the key
+is missing or a call fails, the Worker returns a non-2xx response: the
+background falls back to Pollinations and the wording falls back to the static
+`arcaneLabels` — so nothing breaks.
 
 ## Résumé
 

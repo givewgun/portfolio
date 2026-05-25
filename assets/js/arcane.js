@@ -83,8 +83,42 @@
     });
   }
 
+  /* ── RPG wording (Gemini via the Worker) ─────────────────────────────────── */
+
+  var TEXT_ENDPOINT = "/api/arcane-text";
+  var labelsDone = false; // section labels are fetched once per page load
+
+  function fetchJSON(url) {
+    return fetch(url, { headers: { accept: "application/json" } }).then(function (r) {
+      if (!r.ok) throw new Error("text endpoint " + r.status);
+      return r.json();
+    });
+  }
+
+  // Section nav/kicker/title wording — generated once; static data.js labels
+  // remain the instant fallback if this fails.
+  function summonLabels() {
+    if (labelsDone) return;
+    labelsDone = true;
+    fetchJSON(TEXT_ENDPOINT + "?kind=labels&seed=" + Math.floor(Math.random() * 1e6))
+      .then(function (map) {
+        if (window.PortfolioArcane) window.PortfolioArcane.setLabels(map);
+      })
+      .catch(function () { labelsDone = false; }); // allow a retry on re-activation
+  }
+
+  // Fresh "Parley" (contact) flavor — regenerated on every summon, like the bg.
+  function summonParley() {
+    fetchJSON(TEXT_ENDPOINT + "?kind=parley&seed=" + Math.floor(Math.random() * 1e6))
+      .then(function (p) {
+        if (window.PortfolioArcane) window.PortfolioArcane.setParley(p);
+      })
+      .catch(function () {}); // keep the static "Parley" label
+  }
+
   function generate() {
     buildBg();
+    summonParley(); // regenerate the Parley copy alongside the background
     var token = ++genToken;
     bgLayer.classList.add("is-loading");
     bgLayer.classList.remove("has-image");
@@ -384,7 +418,8 @@
     if (theme === "arcane") {
       buildBg();
       bgLayer.classList.add("is-active");
-      generate();
+      summonLabels(); // RPG-ify the section wording (once)
+      generate();     // background + fresh Parley flavor
       buildMusicWidget();
       musicWidget.classList.add("is-open");
       // Runs synchronously inside the theme-selection click, so playVideo() is

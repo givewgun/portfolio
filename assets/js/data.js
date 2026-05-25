@@ -86,7 +86,7 @@ const portfolioData = {
     highlights: [
       { value: "5M+", label: "IoT devices scaled to" },
       { value: "2M+", label: "users served by IAM platform" },
-      { value: "4.05", label: "CMU MSE GPA" },
+      { value: "4.11", label: "CMU MSE GPA" },
       { value: "6+", label: "years building software" },
     ],
   },
@@ -295,7 +295,7 @@ const portfolioData = {
       degree: "Master of Software Engineering",
       location: "Pittsburgh, PA, USA",
       period: "Aug 2023 – Dec 2024",
-      detail: "GPA 4.05 · Cloud Computing, DevOps & Security, Web Applications, Software Architectures, Quality Assurance, Agile Methods, Project Management.",
+      detail: "GPA 4.11 · Cloud Computing, DevOps & Security, Web Applications, Software Architectures, Quality Assurance, Agile Methods, Project Management.",
     },
     {
       school: "Chulalongkorn University",

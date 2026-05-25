@@ -134,8 +134,17 @@
     "YOMKc7DW-tY",
     "5Jq2zYmbMYU",
   ];
-  var RADIO_LIST = "RD" + MUSIC_TRACKS[MUSIC_TRACKS.length - 1];
+
+  function shuffleTracks() {
+    for (var i = MUSIC_TRACKS.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = MUSIC_TRACKS[i]; MUSIC_TRACKS[i] = MUSIC_TRACKS[j]; MUSIC_TRACKS[j] = t;
+    }
+  }
+  shuffleTracks(); // randomize the play order on every page load
+
   var radioMode = false; // true once we've handed off to the YouTube radio mix
+  var errorStreak = 0;   // consecutive load failures — guards against runaway skipping
 
   var musicWidget = null;       // .arcane-music container
   var musicTrackLabel = null;   // <span> showing track name
@@ -227,7 +236,10 @@
       }
     });
 
-    musicWidget.querySelector(".arcane-music__next").addEventListener("click", playNext);
+    musicWidget.querySelector(".arcane-music__next").addEventListener("click", function () {
+      errorStreak = 0; // manual skip — let it try the next track afresh
+      playNext();
+    });
 
     musicMuteBtn.addEventListener("click", function () {
       musicMuted = !musicMuted;
@@ -274,19 +286,36 @@
   }
 
   function playNext() {
-    if (radioMode) return; // the radio mix auto-advances on its own
+    if (radioMode) {
+      // Radio mix ended or failed — re-shuffle the list and start over.
+      radioMode = false;
+      shuffleTracks();
+      trackIndex = 0;
+      if (ytPlayer && ytReady) ytPlayer.loadVideoById(MUSIC_TRACKS[trackIndex]);
+      return;
+    }
     if (trackIndex >= MUSIC_TRACKS.length - 1) {
-      // Ran out of the curated list — hand off to the YouTube radio mix.
+      // Ran out of the curated list — hand off to the YouTube radio mix
+      // seeded from the last track so related songs keep playing.
       radioMode = true;
       if (ytPlayer && ytReady) {
-        ytPlayer.loadPlaylist({ listType: "playlist", list: RADIO_LIST });
+        ytPlayer.loadPlaylist({ listType: "playlist", list: "RD" + MUSIC_TRACKS[trackIndex] });
       }
       return;
     }
     trackIndex += 1;
-    if (ytPlayer && ytReady) {
-      ytPlayer.loadVideoById(MUSIC_TRACKS[trackIndex]);
+    if (ytPlayer && ytReady) ytPlayer.loadVideoById(MUSIC_TRACKS[trackIndex]);
+  }
+
+  // Called from onError. A track that can't embed is skipped, but a full cycle
+  // of failures stops the chain so it can't spin through the whole list.
+  function handleLoadError() {
+    errorStreak += 1;
+    if (errorStreak > MUSIC_TRACKS.length + 1) {
+      updateTrackLabel("Track unavailable");
+      return;
     }
+    playNext();
   }
 
   function startMusic() {
@@ -326,11 +355,11 @@
           },
           onStateChange: function (e) {
             var S = window.YT.PlayerState;
-            if (e.data === S.PLAYING) { musicPlaying = true; updatePlayBtn(); syncTrackLabelFromPlayer(); }
+            if (e.data === S.PLAYING) { musicPlaying = true; errorStreak = 0; updatePlayBtn(); syncTrackLabelFromPlayer(); }
             if (e.data === S.PAUSED) { musicPlaying = false; updatePlayBtn(); }
             if (e.data === S.ENDED) { playNext(); }
           },
-          onError: function () { playNext(); },
+          onError: function () { handleLoadError(); },
         },
       });
     });

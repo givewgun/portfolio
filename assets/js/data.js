@@ -26,10 +26,8 @@ const portfolioData = {
     // Used for the <title> and SEO description.
     seoDescription:
       "Gun Kaewngarm — Cloud & Software Architect at the Bank of Thailand. Carnegie Mellon Master of Software Engineering, ex-Agoda. Building scalable, enterprise-grade systems.",
-    // Path/URL to the resume PDF you want to expose (optional). Leave "" to hide.
-    // NOTE: this is your older one-page résumé — replace the file at
-    // assets/Gun_Kaewngarm_Resume.pdf whenever you have an updated version.
-    resumeUrl: "assets/Gun_Kaewngarm_Resume.pdf",
+    // The résumé is generated on the fly from this data by assets/js/resume.js
+    // when the visitor clicks the "Résumé (PDF)" button — no static file needed.
     // Initials shown in the nav logo.
     initials: "GK",
     // GitHub username — used by the live "Featured Repositories" section.
@@ -344,3 +342,6 @@ const portfolioData = {
     { id: "contact", label: "Contact" },
   ],
 };
+
+// Expose for other modules (main.js, resume.js) and any external tooling.
+if (typeof window !== "undefined") window.portfolioData = portfolioData;

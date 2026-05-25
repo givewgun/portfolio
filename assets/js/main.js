@@ -97,7 +97,7 @@
     const li = D.contact.links.find((l) => l.icon === "linkedin");
     if (li) cta.push(`<a class="btn btn--primary" href="${esc(li.url)}" target="_blank" rel="noopener">${icons.linkedin}View LinkedIn</a>`);
     cta.push(`<a class="btn btn--ghost" href="#contact">${icons.mail}Get in touch</a>`);
-    if (D.meta.resumeUrl) cta.push(`<a class="btn btn--ghost" href="${esc(D.meta.resumeUrl)}" target="_blank" rel="noopener">${icons.download}Résumé</a>`);
+    cta.push(`<button class="btn btn--ghost" id="resumeBtn" type="button">${icons.download}<span data-resume-label>Résumé (PDF)</span></button>`);
     $("[data-hero-cta]").innerHTML = cta.join("");
 
     // Footer social links
@@ -381,6 +381,29 @@
     els.forEach((e) => obs.observe(e));
   }
 
+  function initResume() {
+    const btn = document.getElementById("resumeBtn");
+    if (!btn) return;
+    const label = btn.querySelector("[data-resume-label]");
+    const original = label ? label.textContent : "";
+    btn.addEventListener("click", async () => {
+      if (btn.disabled) return;
+      if (!window.PortfolioResume) return;
+      btn.disabled = true;
+      if (label) label.textContent = "Generating…";
+      try {
+        await window.PortfolioResume.generate(window.portfolioData || D);
+        if (label) label.textContent = original;
+      } catch (err) {
+        console.error(err);
+        if (label) label.textContent = "Try again";
+        setTimeout(() => { if (label) label.textContent = original; }, 2500);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
   /* ---- Boot --------------------------------------------------------------- */
   document.addEventListener("DOMContentLoaded", () => {
     renderHeader();
@@ -388,6 +411,7 @@
     initTheme();
     initNav();
     initReveal();
+    initResume();
     loadRepos();
   });
 })();

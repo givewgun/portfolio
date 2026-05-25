@@ -59,6 +59,15 @@ Cloudflare DNS add a `CNAME` record for `givewgun.com` → `<user>.github.io`
 index.html              # markup shell (mostly empty placeholders)
 assets/css/styles.css   # all styling + theme tokens
 assets/js/data.js       # ← YOUR CONTENT lives here
+assets/js/resume.js     # generates the résumé PDF on the fly from data.js
 assets/js/main.js       # renders data.js into the page (rarely needs edits)
 CNAME                   # custom domain for GitHub Pages
 ```
+
+## Résumé
+
+There is no résumé file to maintain. The **"Résumé (PDF)"** button generates a
+PDF in the browser from the same `data.js` content (via `assets/js/resume.js`,
+which lazy-loads jsPDF on click), so the résumé always matches the site. To
+change what appears in it, edit `data.js` — or tweak the layout/sections in
+`resume.js`.

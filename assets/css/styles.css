@@ -86,6 +86,11 @@ html[data-theme="arcane"] .org-logo--fallback {
 /* Let the generative background show through; soften the hero grid over it */
 html[data-theme="arcane"] body { background-color: transparent; }
 html[data-theme="arcane"] .hero__bg::after { opacity: 0.12; }
+/* Keep hero text legible over a now-vivid background image */
+html[data-theme="arcane"] .hero__name { filter: drop-shadow(0 3px 14px rgba(0, 0, 0, 0.55)); }
+html[data-theme="arcane"] .hero__role { text-shadow: 0 2px 14px rgba(0, 0, 0, 0.65); }
+html[data-theme="arcane"] .hero__eyebrow,
+html[data-theme="arcane"] .hero__headline { text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8); }
 
 /* Generative-AI background layer (managed by arcane.js) */
 .arcane-bg {
@@ -98,12 +103,12 @@ html[data-theme="arcane"] .hero__bg::after { opacity: 0.12; }
   background-size: cover; background-position: center;
   opacity: 0; transition: opacity 1.2s ease;
 }
-.arcane-bg.has-image .arcane-bg__img { opacity: 0.62; }
+.arcane-bg.has-image .arcane-bg__img { opacity: 0.92; }
 .arcane-bg__scrim {
   position: absolute; inset: 0;
   background:
-    radial-gradient(120% 90% at 50% 18%, rgba(12, 9, 19, 0.45), rgba(12, 9, 19, 0.9) 80%),
-    linear-gradient(180deg, rgba(12, 9, 19, 0.82), rgba(12, 9, 19, 0.66) 42%, rgba(12, 9, 19, 0.92));
+    radial-gradient(115% 80% at 50% 22%, rgba(12, 9, 19, 0.18), rgba(12, 9, 19, 0.62) 88%),
+    linear-gradient(180deg, rgba(12, 9, 19, 0.55), rgba(12, 9, 19, 0.16) 45%, rgba(12, 9, 19, 0.62));
 }
 .arcane-bg__motif {
   position: absolute; inset: 0; display: grid; place-items: center;

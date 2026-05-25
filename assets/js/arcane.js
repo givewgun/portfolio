@@ -119,22 +119,23 @@
   /* ── Background music ────────────────────────────────────────────────────── */
 
   /*
-   * Curated fantasy-RPG OST playlist. Each entry: { id, title }.
-   *   id    — YouTube video ID
-   *   title — shown in the music widget
+   * Curated fantasy-RPG OST playlist (YouTube video IDs, played in order).
+   * To update: replace/add IDs. The player skips on load errors and shows the
+   * real video title once it starts.
    *
-   * To update: replace/add entries. The player skips on load errors.
+   * When the list runs out, playback hands off to YouTube's "radio" mix seeded
+   * from the LAST track (the RD<id> auto-generated playlist), so the music
+   * keeps going with related songs indefinitely.
    */
   var MUSIC_TRACKS = [
-    { id: "h9DzDN-CSZM", title: "Baldur’s Gate 3 — Main Theme" },
-    { id: "4Z7H0IbBSoE", title: "Skyrim — Far Horizons" },
-    { id: "NeL3nFvg4oE", title: "Dragon Age Origins — Main Theme" },
-    { id: "8YKAHgwLEMg", title: "The Witcher 3 — Silver for Monsters" },
-    { id: "PFGj-s8qu2s", title: "Pillars of Eternity — Main Theme" },
-    { id: "mBLMCR3QQ4A", title: "D&D Ambient — Arcane Tavern Night" },
-    { id: "FHmkpCOiDso", title: "FFXIV — Heavensward Theme" },
-    { id: "Z7nKBXgvKMc", title: "Divinity: Original Sin 2 — Main Theme" },
+    "f_5aHf3saoY",
+    "zSVRtM1x9wQ",
+    "DN-Dcwq4i2g",
+    "YOMKc7DW-tY",
+    "5Jq2zYmbMYU",
   ];
+  var RADIO_LIST = "RD" + MUSIC_TRACKS[MUSIC_TRACKS.length - 1];
+  var radioMode = false; // true once we've handed off to the YouTube radio mix
 
   var musicWidget = null;       // .arcane-music container
   var musicTrackLabel = null;   // <span> showing track name
@@ -260,17 +261,31 @@
     musicPlayBtn.setAttribute("aria-label", musicPlaying ? "Pause" : "Play");
   }
 
-  function updateTrackLabel() {
-    if (musicTrackLabel) {
-      musicTrackLabel.textContent = "✶ " + MUSIC_TRACKS[trackIndex].title;
+  function updateTrackLabel(text) {
+    if (musicTrackLabel) musicTrackLabel.textContent = "✶ " + text;
+  }
+
+  // Pull the real video title from the player once it's known.
+  function syncTrackLabelFromPlayer() {
+    if (ytPlayer && ytPlayer.getVideoData) {
+      var d = ytPlayer.getVideoData();
+      if (d && d.title) updateTrackLabel(d.title);
     }
   }
 
   function playNext() {
-    trackIndex = (trackIndex + 1) % MUSIC_TRACKS.length;
+    if (radioMode) return; // the radio mix auto-advances on its own
+    if (trackIndex >= MUSIC_TRACKS.length - 1) {
+      // Ran out of the curated list — hand off to the YouTube radio mix.
+      radioMode = true;
+      if (ytPlayer && ytReady) {
+        ytPlayer.loadPlaylist({ listType: "playlist", list: RADIO_LIST });
+      }
+      return;
+    }
+    trackIndex += 1;
     if (ytPlayer && ytReady) {
-      ytPlayer.loadVideoById(MUSIC_TRACKS[trackIndex].id);
-      updateTrackLabel();
+      ytPlayer.loadVideoById(MUSIC_TRACKS[trackIndex]);
     }
   }
 
@@ -281,15 +296,16 @@
       ytPlayer.playVideo();
       return;
     }
-    // Shuffle starting track
-    trackIndex = Math.floor(Math.random() * MUSIC_TRACKS.length);
-    updateTrackLabel();
+    // Start from the top of the curated list, in order.
+    trackIndex = 0;
+    radioMode = false;
+    updateTrackLabel("Loading…");
 
     loadYouTubeAPI().then(function () {
       ytPlayer = new window.YT.Player("arcane-yt", {
         width: 1,
         height: 1,
-        videoId: MUSIC_TRACKS[trackIndex].id,
+        videoId: MUSIC_TRACKS[trackIndex],
         playerVars: {
           autoplay: 1,
           controls: 0,
@@ -306,11 +322,11 @@
             e.target.setVolume(45);
             if (musicMuted) e.target.mute();
             e.target.playVideo();
-            updateTrackLabel();
+            syncTrackLabelFromPlayer();
           },
           onStateChange: function (e) {
             var S = window.YT.PlayerState;
-            if (e.data === S.PLAYING) { musicPlaying = true; updatePlayBtn(); }
+            if (e.data === S.PLAYING) { musicPlaying = true; updatePlayBtn(); syncTrackLabelFromPlayer(); }
             if (e.data === S.PAUSED) { musicPlaying = false; updatePlayBtn(); }
             if (e.data === S.ENDED) { playNext(); }
           },

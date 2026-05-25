@@ -1,0 +1,6 @@
+# Copy this file to `.dev.vars` for local `wrangler dev`. Never commit real keys.
+# Get a free key at https://aistudio.google.com/apikey
+GEMINI_API_KEY=your-gemini-api-key-here
+
+# Optional: override the image-capable Gemini model if the default changes.
+# GEMINI_IMAGE_MODEL=gemini-2.5-flash-image-preview

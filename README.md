@@ -69,12 +69,35 @@ CNAME                   # custom domain for GitHub Pages
 
 Three themes are available from the menu in the navbar: **Dark**, **Light**,
 and **Arcane** (an opt-in D&D / Baldur's Gate-inspired look). Selecting Arcane
-summons a fresh AI-generated fantasy background each time via
-[Pollinations.ai](https://pollinations.ai) — a free, key-less text-to-image
-endpoint, so nothing sensitive is exposed from the static site. While the
-image generates, a d20 motif is shown; it also stays as the fallback if the
-request fails. Tune the prompt/scenes in `assets/js/arcane.js`, and the
-RPG-flavored section labels in the `arcaneLabels` map in `data.js`.
+summons a fresh AI-generated fantasy background each time. A d20 motif shows
+while it generates (and stays as a fallback), a "Summoning…" label appears,
+and a floating **d20 reroll button** (bottom-right) regenerates on demand.
+Tune the prompt/scenes in `assets/js/arcane.js`, and the RPG-flavored section
+labels in the `arcaneLabels` map in `data.js`.
+
+### Where the image comes from
+
+`arcane.js` tries two sources, in order, then falls back to the d20 motif:
+
+1. **`/api/arcane-image`** — a Cloudflare Worker (`worker/`) that calls Google
+   Gemini using a server-side secret. Preferred when configured.
+2. **[Pollinations.ai](https://pollinations.ai)** — a free, key-less
+   text-to-image endpoint. This is what the static site uses out of the box,
+   so nothing is required to get AI backgrounds working.
+
+#### Enabling Gemini (optional)
+
+1. Get a free API key at <https://aistudio.google.com/apikey> (note: a Gemini
+   *app* subscription is separate from API access).
+2. Add it as a Worker secret — in the Cloudflare dashboard
+   (Workers → portfolio → Settings → Variables and Secrets) add
+   `GEMINI_API_KEY`, or run `npx wrangler secret put GEMINI_API_KEY`.
+3. (Optional) set `GEMINI_IMAGE_MODEL` if the default image model changes.
+4. For local dev, copy `.dev.vars.example` to `.dev.vars` and run
+   `npx wrangler dev`.
+
+If the key is missing or the call fails, the Worker returns a non-2xx response
+and the browser silently falls back to Pollinations — so nothing breaks.
 
 ## Résumé
 

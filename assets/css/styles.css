@@ -116,6 +116,33 @@ html[data-theme="arcane"] .hero__bg::after { opacity: 0.12; }
 @keyframes arcane-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .arcane-bg__motif svg { animation: none; } }
 
+/* Reroll control (only visible in the Arcane theme) */
+.arcane-reroll { display: none; }
+html[data-theme="arcane"] .arcane-reroll {
+  display: flex; align-items: center; gap: 0.6rem;
+  position: fixed; right: 18px; bottom: 18px; z-index: 70;
+}
+.arcane-reroll__label {
+  font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent);
+  background: color-mix(in srgb, var(--bg-card) 86%, transparent);
+  border: 1px solid var(--border); border-radius: 999px; padding: 0.35rem 0.7rem;
+  opacity: 0; transform: translateX(6px); transition: var(--transition); pointer-events: none;
+}
+.arcane-reroll.is-busy .arcane-reroll__label { opacity: 1; transform: none; }
+.arcane-reroll__btn {
+  width: 48px; height: 48px; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; color: var(--accent);
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  border: 1px solid var(--accent-soft); box-shadow: var(--shadow);
+  transition: transform var(--transition), border-color var(--transition);
+}
+.arcane-reroll__btn:hover { transform: rotate(20deg) scale(1.06); border-color: var(--accent); }
+.arcane-reroll__btn:active { transform: scale(0.94); }
+.arcane-reroll__btn svg { width: 26px; height: 26px; }
+.arcane-reroll.is-busy .arcane-reroll__btn { pointer-events: none; }
+.arcane-reroll.is-busy .arcane-reroll__btn svg { animation: arcane-spin 1.1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .arcane-reroll.is-busy .arcane-reroll__btn svg { animation: none; } }
+
 /* ==========================================================================
    RESET / BASE
    ========================================================================== */

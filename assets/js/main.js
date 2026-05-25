@@ -366,6 +366,7 @@
         b.setAttribute("aria-checked", String(on));
       });
       applyThemeLabels(theme.id);
+      document.dispatchEvent(new CustomEvent("themechange", { detail: { theme: theme.id } }));
     };
 
     const open = (state) => {

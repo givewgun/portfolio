@@ -83,6 +83,38 @@ html[data-theme="arcane"] .stat__value,
 html[data-theme="arcane"] .org-logo--fallback {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
+/* Let the generative background show through; soften the hero grid over it */
+html[data-theme="arcane"] body { background-color: transparent; }
+html[data-theme="arcane"] .hero__bg::after { opacity: 0.12; }
+
+/* Generative-AI background layer (managed by arcane.js) */
+.arcane-bg {
+  position: fixed; inset: 0; z-index: -1; display: none; overflow: hidden;
+  pointer-events: none; background: var(--bg);
+}
+.arcane-bg.is-active { display: block; }
+.arcane-bg__img {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0; transition: opacity 1.2s ease;
+}
+.arcane-bg.has-image .arcane-bg__img { opacity: 0.62; }
+.arcane-bg__scrim {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 18%, rgba(12, 9, 19, 0.45), rgba(12, 9, 19, 0.9) 80%),
+    linear-gradient(180deg, rgba(12, 9, 19, 0.82), rgba(12, 9, 19, 0.66) 42%, rgba(12, 9, 19, 0.92));
+}
+.arcane-bg__motif {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--accent); opacity: 0.14; transition: opacity 1s ease;
+}
+.arcane-bg__motif svg { width: 46vmin; height: 46vmin; animation: arcane-spin 64s linear infinite; }
+.arcane-bg.is-loading .arcane-bg__motif { opacity: 0.22; }
+.arcane-bg.is-loading .arcane-bg__motif svg { animation-duration: 9s; }
+.arcane-bg.has-image .arcane-bg__motif { opacity: 0; }
+@keyframes arcane-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .arcane-bg__motif svg { animation: none; } }
 
 /* ==========================================================================
    RESET / BASE

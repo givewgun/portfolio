@@ -60,9 +60,21 @@ index.html              # markup shell (mostly empty placeholders)
 assets/css/styles.css   # all styling + theme tokens
 assets/js/data.js       # ← YOUR CONTENT lives here
 assets/js/resume.js     # generates the résumé PDF on the fly from data.js
+assets/js/arcane.js     # AI-generated background for the opt-in Arcane theme
 assets/js/main.js       # renders data.js into the page (rarely needs edits)
 CNAME                   # custom domain for GitHub Pages
 ```
+
+## Themes
+
+Three themes are available from the menu in the navbar: **Dark**, **Light**,
+and **Arcane** (an opt-in D&D / Baldur's Gate-inspired look). Selecting Arcane
+summons a fresh AI-generated fantasy background each time via
+[Pollinations.ai](https://pollinations.ai) — a free, key-less text-to-image
+endpoint, so nothing sensitive is exposed from the static site. While the
+image generates, a d20 motif is shown; it also stays as the fallback if the
+request fails. Tune the prompt/scenes in `assets/js/arcane.js`, and the
+RPG-flavored section labels in the `arcaneLabels` map in `data.js`.
 
 ## Résumé
 

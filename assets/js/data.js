@@ -27,9 +27,13 @@ const portfolioData = {
     seoDescription:
       "Gun Kaewngarm — Cloud & Software Architect at the Bank of Thailand. Carnegie Mellon Master of Software Engineering, ex-Agoda. Building scalable, enterprise-grade systems.",
     // Path/URL to the resume PDF you want to expose (optional). Leave "" to hide.
-    resumeUrl: "",
+    // NOTE: this is your older one-page résumé — replace the file at
+    // assets/Gun_Kaewngarm_Resume.pdf whenever you have an updated version.
+    resumeUrl: "assets/Gun_Kaewngarm_Resume.pdf",
     // Initials shown in the nav logo.
     initials: "GK",
+    // GitHub username — used by the live "Featured Repositories" section.
+    githubUser: "givewgun",
   },
 
   /* ----------------------------------------------------------------------- */
@@ -83,6 +87,7 @@ const portfolioData = {
   experience: [
     {
       company: "Bank of Thailand",
+      logo: "bot.or.th",
       role: "Software Architect",
       location: "Bangkok, Thailand",
       start: "Jan 2025",
@@ -100,6 +105,7 @@ const portfolioData = {
     },
     {
       company: "Adrich, LLC",
+      logo: "adrich.io",
       role: "Lead Software Engineer",
       location: "Pittsburgh, PA, USA",
       note: "In partnership with Carnegie Mellon University",
@@ -115,6 +121,7 @@ const portfolioData = {
     },
     {
       company: "Agoda",
+      logo: "agoda.com",
       role: "Software Engineer",
       location: "Bangkok, Thailand",
       start: "Jun 2021",
@@ -131,6 +138,7 @@ const portfolioData = {
     },
     {
       company: "Agoda",
+      logo: "agoda.com",
       role: "Associate Software Engineer",
       location: "Bangkok, Thailand",
       start: "Jun 2020",
@@ -144,6 +152,7 @@ const portfolioData = {
     },
     {
       company: "Demeter ICT",
+      logo: "demeterict.com",
       role: "Back End Developer & Tester (Intern)",
       location: "Bangkok, Thailand",
       start: "Jun 2019",
@@ -232,6 +241,7 @@ const portfolioData = {
   education: [
     {
       school: "Carnegie Mellon University",
+      logo: "cmu.edu",
       degree: "Master of Software Engineering",
       location: "Pittsburgh, PA, USA",
       period: "Aug 2023 – Dec 2024",
@@ -239,6 +249,7 @@ const portfolioData = {
     },
     {
       school: "Chulalongkorn University",
+      logo: "chula.ac.th",
       degree: "Bachelor of Engineering, Computer Engineering",
       location: "Bangkok, Thailand",
       period: "2016 – 2020",
@@ -276,6 +287,7 @@ const portfolioData = {
     { id: "experience", label: "Experience" },
     { id: "skills", label: "Skills" },
     { id: "projects", label: "Projects" },
+    { id: "repos", label: "Open Source" },
     { id: "certifications", label: "Certifications" },
     { id: "education", label: "Education" },
     { id: "awards", label: "Awards" },

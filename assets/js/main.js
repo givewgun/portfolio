@@ -18,7 +18,18 @@
     badge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>',
     sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
     moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>',
+    star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.784 1.401 8.169L12 18.896l-7.335 3.868 1.401-8.169L.132 9.211l8.2-1.193z"/></svg>',
+    fork: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9M12 15v0"/></svg>',
+    repo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
   };
+
+  /* ---- Org logo (favicon w/ initials fallback) ---------------------------- */
+  function orgLogo(domain, name) {
+    const initials = String(name).trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+    if (!domain) return `<span class="org-logo org-logo--fallback">${esc(initials)}</span>`;
+    const src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+    return `<span class="org-logo"><img src="${esc(src)}" alt="${esc(name)} logo" loading="lazy" onerror="this.parentNode.classList.add('org-logo--fallback');this.parentNode.textContent='${esc(initials)}';"></span>`;
+  }
 
   /* ---- Tiny DOM helpers --------------------------------------------------- */
   const $ = (s, c = document) => c.querySelector(s);
@@ -99,9 +110,12 @@
           return `<div class="tl-item ${e.current ? "tl-item--current" : ""} reveal">
             <div class="tl-card">
               <div class="tl-top">
-                <div>
-                  <span class="tl-role">${esc(e.role)}</span>${badge}
-                  <div class="tl-company">${esc(e.company)}</div>
+                <div class="tl-head">
+                  ${orgLogo(e.logo, e.company)}
+                  <div>
+                    <span class="tl-role">${esc(e.role)}</span>${badge}
+                    <div class="tl-company">${esc(e.company)}</div>
+                  </div>
                 </div>
                 <span class="tl-period">${period}</span>
               </div>
@@ -145,6 +159,17 @@
       return sectionShell("projects", "Things I've built", "Projects", `<div class="projects__grid">${cards}</div>`);
     },
 
+    repos() {
+      const user = D.meta.githubUser;
+      const inner = `<div class="repos__grid" id="repos-grid">
+          <p class="repos__status reveal">Loading repositories from GitHub…</p>
+        </div>
+        <div class="repos__cta reveal">
+          <a class="btn btn--ghost" href="https://github.com/${esc(user)}" target="_blank" rel="noopener">${icons.github}See all repositories on GitHub</a>
+        </div>`;
+      return sectionShell("repos", "From my GitHub", "Open Source & Featured Repos", inner);
+    },
+
     certifications() {
       const items = D.certifications
         .map((c) => `<div class="cert-item reveal">
@@ -158,8 +183,13 @@
     education() {
       const cards = D.education
         .map((e) => `<div class="info-card reveal">
-          <div class="info-card__title">${esc(e.school)}</div>
-          <div class="info-card__sub">${esc(e.degree)}</div>
+          <div class="info-card__head">
+            ${orgLogo(e.logo, e.school)}
+            <div>
+              <div class="info-card__title">${esc(e.school)}</div>
+              <div class="info-card__sub">${esc(e.degree)}</div>
+            </div>
+          </div>
           <div class="info-card__meta">${esc(e.period)}${e.location ? " · " + esc(e.location) : ""}</div>
           ${e.detail ? `<div class="info-card__detail">${esc(e.detail)}</div>` : ""}
         </div>`)
@@ -196,6 +226,42 @@
       return `<section class="section contact" id="contact">${inner}</section>`;
     },
   };
+
+  function repoCard(r) {
+    const lang = r.language ? `<span class="repo-card__lang"><i></i>${esc(r.language)}</span>` : "";
+    const stars = r.stargazers_count ? `<span>${icons.star}${r.stargazers_count}</span>` : "";
+    const forks = r.forks_count ? `<span>${icons.fork}${r.forks_count}</span>` : "";
+    const meta = lang + stars + forks;
+    return `<a class="repo-card reveal is-visible" href="${esc(r.html_url)}" target="_blank" rel="noopener">
+      <div class="repo-card__top">${icons.repo}<span class="repo-card__name">${esc(r.name)}</span></div>
+      <p class="repo-card__desc">${esc(r.description || "No description provided.")}</p>
+      ${meta ? `<div class="repo-card__meta">${meta}</div>` : ""}
+    </a>`;
+  }
+
+  async function loadRepos() {
+    const grid = $("#repos-grid");
+    const user = D.meta.githubUser;
+    if (!grid || !user) return;
+    const fallback = `<p class="repos__status">Couldn't load repositories right now — <a href="https://github.com/${esc(user)}" target="_blank" rel="noopener">browse them on GitHub</a>.</p>`;
+    try {
+      const res = await fetch(`https://api.github.com/users/${encodeURIComponent(user)}/repos?per_page=100&sort=updated`);
+      if (!res.ok) throw new Error("GitHub API " + res.status);
+      let repos = await res.json();
+      if (!Array.isArray(repos)) throw new Error("Unexpected response");
+      repos = repos
+        .filter((r) => !r.fork && !r.archived)
+        .sort((a, b) => b.stargazers_count - a.stargazers_count || new Date(b.pushed_at) - new Date(a.pushed_at))
+        .slice(0, 6);
+      if (!repos.length) {
+        grid.innerHTML = `<p class="repos__status">No public repositories yet — <a href="https://github.com/${esc(user)}" target="_blank" rel="noopener">visit my GitHub</a>.</p>`;
+        return;
+      }
+      grid.innerHTML = repos.map(repoCard).join("");
+    } catch (e) {
+      grid.innerHTML = fallback;
+    }
+  }
 
   function renderSections() {
     const html = D.sectionOrder
@@ -286,5 +352,6 @@
     initTheme();
     initNav();
     initReveal();
+    loadRepos();
   });
 })();

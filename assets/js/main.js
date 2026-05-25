@@ -355,6 +355,40 @@
     ).join("");
     menu.appendChild(pop);
 
+    // ── Discovery cue: nudge visitors toward the opt-in Arcane theme ──────────
+    // Stops once the visitor has actually tried Arcane (persisted).
+    let hint = null;
+    const arcaneSeen = () => localStorage.getItem("arcaneSeen") === "1";
+    const hideHint = () => { if (hint) hint.classList.remove("is-visible"); };
+    const clearArcaneCue = () => {
+      trigger.classList.remove("theme-toggle--hint");
+      const ai = pop.querySelector('[data-theme-id="arcane"]');
+      if (ai) ai.classList.remove("theme-menu__item--nudge");
+    };
+    if (!arcaneSeen() && current !== "arcane") {
+      trigger.classList.add("theme-toggle--hint");
+      const arcaneItem = pop.querySelector('[data-theme-id="arcane"]');
+      if (arcaneItem) arcaneItem.classList.add("theme-menu__item--nudge");
+      if (localStorage.getItem("arcaneHintShown") !== "1") {
+        hint = document.createElement("div");
+        hint.className = "theme-hint";
+        hint.innerHTML =
+          '<span class="theme-hint__icon">✦</span>' +
+          '<span class="theme-hint__text">Psst… try <strong>Arcane</strong> mode</span>' +
+          '<button class="theme-hint__close" type="button" aria-label="Dismiss">×</button>';
+        menu.appendChild(hint);
+        const autoHide = setTimeout(hideHint, 12000);
+        setTimeout(() => { if (hint && !arcaneSeen()) hint.classList.add("is-visible"); }, 2600);
+        hint.querySelector(".theme-hint__close").addEventListener("click", (e) => {
+          e.stopPropagation();
+          clearTimeout(autoHide);
+          hideHint();
+          localStorage.setItem("arcaneHintShown", "1");
+        });
+        hint.addEventListener("click", () => { hideHint(); open(true); });
+      }
+    }
+
     const apply = (id) => {
       const theme = THEMES.find((t) => t.id === id) || THEMES[0];
       root.setAttribute("data-theme", theme.id);
@@ -365,6 +399,12 @@
         b.classList.toggle("is-active", on);
         b.setAttribute("aria-checked", String(on));
       });
+      if (theme.id === "arcane") {
+        localStorage.setItem("arcaneSeen", "1");
+        localStorage.setItem("arcaneHintShown", "1");
+        clearArcaneCue();
+        hideHint();
+      }
       applyThemeLabels(theme.id);
       document.dispatchEvent(new CustomEvent("themechange", { detail: { theme: theme.id } }));
     };
@@ -377,6 +417,8 @@
     apply(current);
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
+      hideHint();
+      localStorage.setItem("arcaneHintShown", "1");
       open(!menu.classList.contains("is-open"));
     });
     pop.addEventListener("click", (e) => {

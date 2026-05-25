@@ -257,6 +257,22 @@ const portfolioData = {
         "An AI that learns to play Flappy Bird autonomously by combining neural networks with a genetic algorithm — evolving and optimizing bird behavior across generations, with model persistence to track training progress.",
       tags: ["Python", "Neural Networks", "Genetic Algorithm"],
     },
+    {
+      title: "Rama IV Traffic Dashboard & Prediction",
+      org: "Data Engineering · ML",
+      url: "https://github.com/givewgun/RamaIV-Dashboard-prediction",
+      description:
+        "A traffic monitoring dashboard and speed-prediction system built on taxi GPS data (Chulalongkorn University). The dashboard runs on Plotly Dash backed by Google BigQuery; a CNN-based model treats traffic as images — translating spatiotemporal dynamics into time-space matrices — to predict speed within ~10 km/h. Served via Flask in Docker on Google Cloud Run.",
+      tags: ["Python", "CNN / Deep Learning", "Plotly Dash", "BigQuery", "Flask", "Cloud Run"],
+    },
+    {
+      title: "Real-time Multiplayer Battleship",
+      org: "Real-time Multiplayer Game",
+      url: "https://github.com/givewgun/battleducks",
+      description:
+        "A real-time, two-player Battleship game (Carnegie Mellon University) with a JavaScript/HTML front-end and a Python (Django) backend over WebSockets. Features OAuth login, matchmaking, and in-game chat, backed by PostgreSQL and supporting multiple concurrent matches. Deployed on Amazon EC2 with SSL.",
+      tags: ["Django", "WebSocket", "PostgreSQL", "OAuth", "AWS EC2"],
+    },
   ],
 
   /* ----------------------------------------------------------------------- */

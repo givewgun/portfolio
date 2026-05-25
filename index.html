@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gun Kaewngarm — Cloud & Software Architect</title>
+  <meta name="description" content="Gun Kaewngarm — Cloud & Software Architect at the Bank of Thailand. Carnegie Mellon Master of Software Engineering, ex-Agoda." />
+  <meta name="author" content="Gun Kaewngarm" />
+
+  <!-- Open Graph / social preview -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Gun Kaewngarm — Cloud & Software Architect" />
+  <meta property="og:description" content="Cloud & Software Architect at the Bank of Thailand. Carnegie Mellon MSE, ex-Agoda." />
+  <meta property="og:url" content="https://givewgun.com" />
+  <meta name="twitter:card" content="summary" />
+
+  <link rel="canonical" href="https://givewgun.com" />
+  <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22&gt;&lt;text y=%22.9em%22 font-size=%2290%22&gt;⚡&lt;/text&gt;&lt;/svg&gt;" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <!-- Skip link for accessibility -->
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <!-- Navigation -->
+  <header class="nav" id="nav">
+    <div class="nav__inner">
+      <a href="#top" class="nav__logo" aria-label="Home">
+        <span class="nav__logo-mark" data-logo></span>
+        <span class="nav__logo-text" data-name></span>
+      </a>
+      <nav class="nav__links" data-nav aria-label="Primary"></nav>
+      <div class="nav__actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle color theme" title="Toggle theme"></button>
+        <button class="nav__burger" id="burger" aria-label="Open menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Hero -->
+    <section class="hero" id="top">
+      <div class="hero__bg" aria-hidden="true"></div>
+      <div class="hero__inner">
+        <p class="hero__eyebrow" data-hero-location></p>
+        <h1 class="hero__name" data-hero-name></h1>
+        <p class="hero__role" data-hero-role></p>
+        <p class="hero__headline" data-hero-headline></p>
+        <div class="hero__cta" data-hero-cta></div>
+      </div>
+      <a href="#about" class="hero__scroll" aria-label="Scroll down">
+        <span></span>
+      </a>
+    </section>
+
+    <!-- Dynamic sections render here -->
+    <div id="sections"></div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <p class="footer__name" data-footer-name></p>
+      <div class="footer__links" data-footer-links></div>
+      <p class="footer__note">Built with plain HTML, CSS & JS — all content lives in <code>assets/js/data.js</code>.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/main.js"></script>
+</body>
+</html>

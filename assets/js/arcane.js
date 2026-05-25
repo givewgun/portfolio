@@ -95,6 +95,30 @@
     });
   }
 
+  function postJSON(url, body) {
+    return fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify(body),
+    }).then(function (r) {
+      if (!r.ok) throw new Error("text endpoint " + r.status);
+      return r.json();
+    });
+  }
+
+  // Retell the About bio in fantasy style from the real content (the base),
+  // regenerated on every summon. Falls back to the real bio on any failure.
+  function summonLore() {
+    var data = window.portfolioData;
+    var base = data && data.about && data.about.paragraphs;
+    if (!base || !base.length) return;
+    postJSON(TEXT_ENDPOINT, { kind: "lore", base: base, seed: Math.floor(Math.random() * 1e6) })
+      .then(function (out) {
+        if (out && out.paragraphs && window.PortfolioArcane) window.PortfolioArcane.setLore(out.paragraphs);
+      })
+      .catch(function () {}); // keep the real About content
+  }
+
   // Section nav/kicker/title wording — generated once; static data.js labels
   // remain the instant fallback if this fails.
   function summonLabels() {
@@ -119,6 +143,7 @@
   function generate() {
     buildBg();
     summonParley(); // regenerate the Parley copy alongside the background
+    summonLore();   // and retell the About lore in-theme
     var token = ++genToken;
     bgLayer.classList.add("is-loading");
     bgLayer.classList.remove("has-image");

@@ -322,6 +322,8 @@
   // wording/labels change — never the real content.
   let runtimeLabels = null;
   let lastParley = null;
+  let lastLore = null;       // fantasy retelling of the About paragraphs
+  let aboutOrigHTML = null;  // cached real About markup, for restore
 
   // Swap nav + section labels to their Arcane (RPG) variants when active,
   // restoring the originals otherwise. Originals are cached on first run.
@@ -346,6 +348,20 @@
       swap(sec.querySelector(".section__title") || sec.querySelector(".contact__title"), "title", sec.id);
     });
     applyParleyFlavor(arcane);
+    applyLore(arcane);
+  }
+
+  // The About ("Lore") section is retold in fantasy style from the real bio,
+  // regenerated each summon. The real content is restored when leaving Arcane.
+  function applyLore(arcane) {
+    const box = document.querySelector(".about__text");
+    if (!box) return;
+    if (aboutOrigHTML === null) aboutOrigHTML = box.innerHTML;
+    if (arcane && lastLore && lastLore.length) {
+      box.innerHTML = lastLore.map((p) => `<p>${esc(p)}</p>`).join("");
+    } else {
+      box.innerHTML = aboutOrigHTML;
+    }
   }
 
   // The contact ("Parley") section gets a fresh RPG invitation each summon.
@@ -548,6 +564,11 @@
     setParley(p) {
       if (!p || typeof p !== "object") return;
       lastParley = p;
+      if (isArcane()) applyThemeLabels("arcane");
+    },
+    setLore(paragraphs) {
+      if (!Array.isArray(paragraphs) || !paragraphs.length) return;
+      lastLore = paragraphs.map(String);
       if (isArcane()) applyThemeLabels("arcane");
     },
   };

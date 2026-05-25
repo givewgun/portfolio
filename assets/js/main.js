@@ -59,10 +59,7 @@
     const isImg = logo.includes("/") || /\.(png|jpe?g|svg|webp|ico|gif)$/i.test(logo);
     const srcs = isImg
       ? [logo]
-      : [
-          `https://icons.duckduckgo.com/ip3/${logo}.ico`,
-          `https://www.google.com/s2/favicons?domain=${encodeURIComponent(logo)}&sz=128`,
-        ];
+      : [`https://www.google.com/s2/favicons?domain=${encodeURIComponent(logo)}&sz=128`];
     const data = esc(JSON.stringify(srcs));
     return `<span class="org-logo"><img src="${esc(srcs[0])}" data-srcs='${data}' data-i="0" data-initials="${esc(initials)}" alt="${esc(name)} logo" loading="lazy" onload="window.__logoLoaded(this)" onerror="window.__logoErr(this)"></span>`;
   }

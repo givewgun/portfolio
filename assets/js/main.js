@@ -249,10 +249,13 @@
       if (!res.ok) throw new Error("GitHub API " + res.status);
       let repos = await res.json();
       if (!Array.isArray(repos)) throw new Error("Unexpected response");
+      const patterns = (D.meta.githubExcludePatterns || []).map((p) => p.toLowerCase());
+      const limit = D.meta.githubRepoLimit || 6;
       repos = repos
         .filter((r) => !r.fork && !r.archived)
-        .sort((a, b) => b.stargazers_count - a.stargazers_count || new Date(b.pushed_at) - new Date(a.pushed_at))
-        .slice(0, 6);
+        .filter((r) => !patterns.some((p) => r.name.toLowerCase().includes(p)))
+        .sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at))
+        .slice(0, limit);
       if (!repos.length) {
         grid.innerHTML = `<p class="repos__status">No public repositories yet — <a href="https://github.com/${esc(user)}" target="_blank" rel="noopener">visit my GitHub</a>.</p>`;
         return;

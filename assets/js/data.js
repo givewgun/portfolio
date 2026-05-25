@@ -34,6 +34,16 @@ const portfolioData = {
     initials: "GK",
     // GitHub username — used by the live "Featured Repositories" section.
     githubUser: "givewgun",
+    // Live repos section settings.
+    // - Forks and archived repos are always hidden.
+    // - Repo names matching any of these patterns are also hidden (tutorials,
+    //   coursework, this site, the profile README, etc.). Edit as needed.
+    githubExcludePatterns: [
+      "tutorial", "study", "recitation", "assignment", "bootcamp",
+      "boot-camp", "essential", "portfolio", "givewgun",
+    ],
+    // Max number of repos to show in the live section.
+    githubRepoLimit: 6,
   },
 
   /* ----------------------------------------------------------------------- */
@@ -200,28 +210,52 @@ const portfolioData = {
   /* ----------------------------------------------------------------------- */
   projects: [
     {
-      title: "Real-time Multiplayer Battleship",
-      org: "Carnegie Mellon University",
-      url: "",
+      title: "GunVest",
+      org: "Investment Dashboard · Full-stack",
+      url: "https://github.com/givewgun/gunvest-public",
       description:
-        "A real-time multiplayer game with a JavaScript/HTML front-end and a Python (Django) backend using WebSockets. Features user registration, login, matchmaking, and in-game chat, supporting multiple concurrent matches. Deployed on Amazon EC2 with SSL.",
-      tags: ["Django", "WebSocket", "JavaScript", "AWS EC2"],
+        "A real-time investment command center with macro tracking, behavioral coaching, and AI-powered sentiment analysis that aggregates Finnhub, StockTwits, Reddit, and Google Gemini. Includes a geopolitical \"war room\" (GDELT + RSS ingestion with AI impact scoring) and an Inverse-Cramer module that extracts Cramer's picks via YouTube + Gemini for contrarian signals.",
+      tags: ["React 18", "Node.js / Express", "Socket.io", "Gemini AI", "SQLite", "Docker"],
     },
     {
-      title: "Rama IV Traffic Dashboard & Prediction",
-      org: "Chulalongkorn University",
-      url: "",
+      title: "Horizon",
+      org: "Space & Earth Dashboard",
+      url: "https://github.com/givewgun/horizon",
       description:
-        "A traffic monitoring dashboard and speed-prediction system built on taxi GPS data. Dashboard in Plotly Dash backed by Google BigQuery; a CNN-based model treats traffic as images (time-space matrices) to predict speed within ~10 km/h. Served via Flask in Docker on Google Cloud Run.",
-      tags: ["Plotly Dash", "BigQuery", "CNN", "Flask", "Cloud Run"],
+        "A real-time space & earth monitoring dashboard: launch forecasts with countdowns and embedded webcasts (The Space Devs API), a CesiumJS satellite globe tracking the ISS, Hubble & JWST with client-side SGP4 orbit propagation and visible-pass prediction, and aggregated NASA/SpaceX/ESA live streams. Containerized behind a Cloudflare Tunnel.",
+      tags: ["TypeScript", "React + Vite", "Fastify", "CesiumJS", "Docker", "Cloudflare Tunnel"],
     },
     {
-      title: "Namo Dhamma Chat Bot",
-      org: "Chulalongkorn University",
-      url: "",
+      title: "MangaDL",
+      org: "Desktop App · Electron",
+      url: "https://github.com/givewgun/manga-dl",
       description:
-        "A LINE chatbot delivering Dhamma guidance to support individuals with depression and promote mindfulness. Built with Dialogflow (NLU), Cloud Scheduler, Cloud Datastore, and Cloud Storage; containerized with Docker and deployed on Google Cloud Run.",
-      tags: ["Dialogflow", "LINE", "GCP", "Docker"],
+        "A cross-platform Electron desktop app to browse, read, and download manga from multiple sources through a pluggable adapter system (native MangaDex API plus manifest-based and adaptive HTML probing). Resilient bulk downloads with pause/resume, exponential-backoff retries, crash recovery, and automated CBZ library management.",
+      tags: ["TypeScript", "Electron", "React", "Vite", "SQLite"],
+    },
+    {
+      title: "elscione-dl",
+      org: "Python · Interactive TUI",
+      url: "https://github.com/givewgun/elscione-dl",
+      description:
+        "A bulk light-novel & manga downloader with a full-screen interactive terminal UI and automatic OneDrive sync. Smart resume via .part files and manifest tracking, EPUB/PDF export, and configurable parallel downloads (1–10 concurrent) with automatic retry logic for failed files.",
+      tags: ["Python 3.11", "TUI", "TOML", "Async"],
+    },
+    {
+      title: "Jenkins DevOps Pipeline",
+      org: "CI/CD · Infrastructure",
+      url: "https://github.com/givewgun/jenkins-full-devops-pipeline",
+      description:
+        "An end-to-end CI/CD pipeline integrating build, code-quality, security, and deployment stages — Jenkins orchestration with SonarQube quality gates, OWASP ZAP security scanning, Ansible-driven EC2 deployment, and a Prometheus + Grafana observability stack.",
+      tags: ["Jenkins", "SonarQube", "OWASP ZAP", "Ansible", "Prometheus", "Grafana"],
+    },
+    {
+      title: "FlappyAI",
+      org: "Machine Learning",
+      url: "https://github.com/givewgun/FlappyAI",
+      description:
+        "An AI that learns to play Flappy Bird autonomously by combining neural networks with a genetic algorithm — evolving and optimizing bird behavior across generations, with model persistence to track training progress.",
+      tags: ["Python", "Neural Networks", "Genetic Algorithm"],
     },
   ],
 

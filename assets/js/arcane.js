@@ -156,7 +156,8 @@
   var trackIndex = 0;
   var musicMuted = false;
   var musicPlaying = false;
-  var musicEnabled = false;     // user has intentionally started music this session
+  var wantPlay = false;         // desired state: should we be playing right now?
+  var creatingPlayer = false;   // guards against double player creation
 
   var MUSIC_ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -222,18 +223,11 @@
 
     musicWidget.querySelector(".arcane-music__toggle").addEventListener("click", function () {
       musicWidget.classList.toggle("is-open");
-      if (musicWidget.classList.contains("is-open") && !ytPlayer) {
-        startMusic();
-      }
+      if (musicWidget.classList.contains("is-open")) startPlayback();
     });
 
     musicPlayBtn.addEventListener("click", function () {
-      if (!ytPlayer) { startMusic(); return; }
-      if (musicPlaying) {
-        ytPlayer.pauseVideo();
-      } else {
-        ytPlayer.playVideo();
-      }
+      if (musicPlaying) stopPlayback(); else startPlayback();
     });
 
     musicWidget.querySelector(".arcane-music__next").addEventListener("click", function () {
@@ -318,14 +312,15 @@
     playNext();
   }
 
-  function startMusic() {
-    musicEnabled = true;
+  // Create the YouTube player up front (no playback yet). Creating the player
+  // does not require a user gesture; PLAYING does — so we create it eagerly and
+  // only call playVideo() from inside a real click handler. That avoids the
+  // autoplay-policy block that happens when playVideo() is deferred to the
+  // async onReady callback (which loses the gesture context).
+  function createPlayer() {
+    if (ytPlayer || creatingPlayer) return;
+    creatingPlayer = true;
     buildMusicWidget();
-    if (ytPlayer) {
-      ytPlayer.playVideo();
-      return;
-    }
-    // Start from the top of the curated list, in order.
     trackIndex = 0;
     radioMode = false;
     updateTrackLabel("Loading…");
@@ -336,7 +331,7 @@
         height: 1,
         videoId: MUSIC_TRACKS[trackIndex],
         playerVars: {
-          autoplay: 1,
+          autoplay: 0,
           controls: 0,
           loop: 0,
           playsinline: 1,
@@ -350,7 +345,7 @@
             ytReady = true;
             e.target.setVolume(45);
             if (musicMuted) e.target.mute();
-            e.target.playVideo();
+            if (wantPlay) e.target.playVideo(); // honor a play requested before ready
             syncTrackLabelFromPlayer();
           },
           onStateChange: function (e) {
@@ -365,10 +360,19 @@
     });
   }
 
-  function stopMusic() {
+  function startPlayback() {
+    wantPlay = true;
+    buildMusicWidget();
     if (ytPlayer && ytReady) {
-      ytPlayer.pauseVideo();
+      ytPlayer.playVideo(); // synchronous within the triggering gesture → not blocked
+    } else {
+      createPlayer(); // will auto-play in onReady because wantPlay is set
     }
+  }
+
+  function stopPlayback() {
+    wantPlay = false;
+    if (ytPlayer && ytReady) ytPlayer.pauseVideo();
     musicPlaying = false;
     updatePlayBtn();
   }
@@ -382,18 +386,25 @@
       bgLayer.classList.add("is-active");
       generate();
       buildMusicWidget();
-      // Auto-start music on activation (browser allows since this follows user interaction)
-      if (!ytPlayer) {
-        startMusic();
-        musicWidget.classList.add("is-open");
-      } else {
-        ytPlayer.playVideo();
-        musicWidget.classList.add("is-open");
-      }
+      musicWidget.classList.add("is-open");
+      // Runs synchronously inside the theme-selection click, so playVideo() is
+      // still within a user gesture and the browser allows audio.
+      startPlayback();
     } else {
       if (bgLayer) bgLayer.classList.remove("is-active");
       if (musicWidget) musicWidget.classList.remove("is-open", "is-visible");
-      stopMusic();
+      stopPlayback();
     }
   });
+
+  // Warm up the YouTube player on the first interaction (e.g. opening the theme
+  // menu) so it's ready by the time Arcane is selected — then playback can start
+  // synchronously within that gesture instead of fighting the autoplay policy.
+  function warmUp() {
+    createPlayer();
+    document.removeEventListener("pointerdown", warmUp);
+    document.removeEventListener("keydown", warmUp);
+  }
+  document.addEventListener("pointerdown", warmUp);
+  document.addEventListener("keydown", warmUp);
 })();

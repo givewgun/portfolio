@@ -26,6 +26,14 @@
   /* ---- Org logo (local file or favicon providers, initials fallback) ------ */
   // Advances an <img> through its candidate sources on error; when all fail,
   // swaps the badge to an initials fallback. Exposed for inline onerror.
+  // Widen the badge for wordmark-style (non-square) logos so they stay legible.
+  window.__logoLoaded = function (img) {
+    const span = img.parentNode;
+    if (!span || !img.naturalWidth || !img.naturalHeight) return;
+    if (img.naturalWidth / img.naturalHeight >= 1.6) span.classList.add("org-logo--wide");
+    else span.classList.remove("org-logo--wide");
+  };
+
   window.__logoErr = function (img) {
     try {
       const srcs = JSON.parse(img.getAttribute("data-srcs") || "[]");
@@ -56,7 +64,7 @@
           `https://www.google.com/s2/favicons?domain=${encodeURIComponent(logo)}&sz=128`,
         ];
     const data = esc(JSON.stringify(srcs));
-    return `<span class="org-logo"><img src="${esc(srcs[0])}" data-srcs='${data}' data-i="0" data-initials="${esc(initials)}" alt="${esc(name)} logo" loading="lazy" onerror="window.__logoErr(this)"></span>`;
+    return `<span class="org-logo"><img src="${esc(srcs[0])}" data-srcs='${data}' data-i="0" data-initials="${esc(initials)}" alt="${esc(name)} logo" loading="lazy" onload="window.__logoLoaded(this)" onerror="window.__logoErr(this)"></span>`;
   }
 
   /* ---- Tiny DOM helpers --------------------------------------------------- */

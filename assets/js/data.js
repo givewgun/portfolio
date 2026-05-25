@@ -97,7 +97,7 @@ const portfolioData = {
   experience: [
     {
       company: "Bank of Thailand",
-      logo: "bot.or.th",
+      logo: "https://commons.wikimedia.org/wiki/Special:FilePath/Seal_of_the_Bank_of_Thailand.png?width=256",
       role: "Software Architect",
       location: "Bangkok, Thailand",
       start: "Jan 2025",
@@ -115,7 +115,7 @@ const portfolioData = {
     },
     {
       company: "Adrich, LLC",
-      logo: "adrich.io",
+      logo: "https://static.wixstatic.com/media/f78c1d_929cd1f98357470ea6c2f1dbd98a57c9~mv2.png/v1/crop/x_8,y_0,w_712,h_169/fill/w_506,h_120,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Adrich_Logo_dtewdf.png",
       role: "Lead Software Engineer",
       location: "Pittsburgh, PA, USA",
       note: "In partnership with Carnegie Mellon University",

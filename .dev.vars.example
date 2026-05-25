@@ -4,3 +4,6 @@ GEMINI_API_KEY=your-gemini-api-key-here
 
 # Optional: override the image-capable Gemini model if the default changes.
 # GEMINI_IMAGE_MODEL=gemini-2.5-flash-image-preview
+
+# Optional: override the text model used for RPG-flavored Arcane wording.
+# GEMINI_TEXT_MODEL=gemini-2.5-flash

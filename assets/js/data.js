@@ -341,6 +341,24 @@ const portfolioData = {
     { id: "awards", label: "Awards" },
     { id: "contact", label: "Contact" },
   ],
+
+  /* ----------------------------------------------------------------------- */
+  /*  ARCANE THEME LABELS (D&D / BG3 flavor)                                 */
+  /*  Used ONLY while the opt-in "Arcane" theme is active. Keyed by section  */
+  /*  id; each may set `nav` (navbar text), `kicker`, and/or `title`.        */
+  /*  Edit freely — the professional themes always use the standard labels.  */
+  /* ----------------------------------------------------------------------- */
+  arcaneLabels: {
+    about:          { nav: "Lore",          kicker: "Origin story",        title: "Lore" },
+    experience:     { nav: "Campaign",      kicker: "The journey so far",  title: "Campaign Log" },
+    skills:         { nav: "Proficiencies", kicker: "Abilities & feats",   title: "Proficiencies" },
+    projects:       { nav: "Quests",        kicker: "Completed quests",    title: "Quests" },
+    repos:          { nav: "Artifacts",     kicker: "From the workshop",   title: "Artifacts & Relics" },
+    certifications: { nav: "Attunements",   kicker: "Credentials",         title: "Attunements" },
+    education:      { nav: "Training",      kicker: "Where I trained",     title: "Training Grounds" },
+    awards:         { nav: "Honors",        kicker: "Recognition",         title: "Honors & Tongues" },
+    contact:        { nav: "Parley",        kicker: "Send a raven",        title: "Parley" },
+  },
 };
 
 // Expose for other modules (main.js, resume.js) and any external tooling.

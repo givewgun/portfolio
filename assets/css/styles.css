@@ -8,6 +8,8 @@
   --radius-sm: 10px;
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* Display font for headings. Dark/light keep the sans; Arcane overrides it. */
+  --font-display: var(--font-sans);
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -43,6 +45,43 @@ html[data-theme="light"] {
   --shadow: 0 18px 45px -24px rgba(31, 54, 99, 0.4);
   --hero-glow-1: rgba(47, 107, 255, 0.18);
   --hero-glow-2: rgba(124, 77, 255, 0.14);
+}
+
+/* Opt-in "Arcane" theme — Baldur's Gate 3-inspired (gold + arcane violet) */
+html[data-theme="arcane"] {
+  --bg: #0c0913;
+  --bg-soft: #130e1d;
+  --bg-card: #181125;
+  --bg-elev: #20172f;
+  --border: #34284a;
+  --text: #f1e9da;
+  --text-soft: #c3b6cf;
+  --text-dim: #8a7c9c;
+  --accent: #d4af37;
+  --accent-2: #9a6cff;
+  --accent-soft: rgba(212, 175, 55, 0.14);
+  --shadow: 0 20px 55px -22px rgba(0, 0, 0, 0.8);
+  --hero-glow-1: rgba(212, 175, 55, 0.22);
+  --hero-glow-2: rgba(154, 108, 255, 0.22);
+  --font-display: "Cinzel", Georgia, "Times New Roman", serif;
+}
+
+/* Arcane decorative touches (kept restrained) */
+html[data-theme="arcane"] body {
+  background-image:
+    radial-gradient(60% 50% at 50% -5%, rgba(154, 108, 255, 0.1), transparent 70%),
+    radial-gradient(40% 30% at 100% 0%, rgba(212, 175, 55, 0.08), transparent 70%);
+  background-attachment: fixed;
+}
+html[data-theme="arcane"] .section__title,
+html[data-theme="arcane"] .contact__title { letter-spacing: 0.01em; }
+html[data-theme="arcane"] .hero__name { letter-spacing: -0.01em; }
+html[data-theme="arcane"] .section__kicker { color: var(--accent); }
+html[data-theme="arcane"] .nav__logo-mark,
+html[data-theme="arcane"] .btn--primary,
+html[data-theme="arcane"] .stat__value,
+html[data-theme="arcane"] .org-logo--fallback {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 
 /* ==========================================================================
@@ -102,6 +141,7 @@ img { max-width: 100%; display: block; }
   content: ""; width: 28px; height: 2px; background: var(--accent); border-radius: 2px;
 }
 .section__title {
+  font-family: var(--font-display);
   font-size: clamp(1.7rem, 4vw, 2.5rem);
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -151,6 +191,29 @@ img { max-width: 100%; display: block; }
 }
 .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 .theme-toggle svg { width: 18px; height: 18px; }
+
+/* Theme menu (dropdown) */
+.theme-menu { position: relative; }
+.theme-menu__pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 120;
+  min-width: 150px; padding: 6px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 2px;
+  opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top right;
+  pointer-events: none; transition: var(--transition);
+}
+.theme-menu.is-open .theme-menu__pop { opacity: 1; transform: none; pointer-events: auto; }
+.theme-menu__item {
+  display: flex; align-items: center; gap: 0.6rem; width: 100%;
+  padding: 0.5rem 0.7rem; border-radius: 8px; cursor: pointer;
+  background: none; border: none; color: var(--text-soft);
+  font: inherit; font-size: 0.9rem; text-align: left; transition: var(--transition);
+}
+.theme-menu__item:hover { background: var(--accent-soft); color: var(--text); }
+.theme-menu__item.is-active { color: var(--accent); }
+.theme-menu__item.is-active::after { content: "✓"; margin-left: auto; font-size: 0.85rem; }
+.theme-menu__item svg { width: 17px; height: 17px; flex: none; }
 
 .nav__burger {
   display: none; width: 38px; height: 38px; border-radius: 10px; cursor: pointer;
@@ -206,6 +269,7 @@ img { max-width: 100%; display: block; }
 }
 .hero__eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #36d399; box-shadow: 0 0 0 4px rgba(54, 211, 153, 0.18); }
 .hero__name {
+  font-family: var(--font-display);
   font-size: clamp(2.6rem, 9vw, 5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.12;
   padding-bottom: 0.08em;
   background: linear-gradient(120deg, var(--text), var(--text) 40%, var(--accent));
@@ -429,7 +493,7 @@ img { max-width: 100%; display: block; }
     radial-gradient(60% 120% at 50% 0%, var(--accent-soft), transparent 70%);
   border-radius: var(--radius);
 }
-.contact__title { font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 800; letter-spacing: -0.02em; }
+.contact__title { font-family: var(--font-display); font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 800; letter-spacing: -0.02em; }
 .contact__text { color: var(--text-soft); max-width: 520px; margin: 1rem auto 2rem; }
 .contact__links { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
 

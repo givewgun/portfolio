@@ -18,6 +18,7 @@
     badge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>',
     sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
     moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>',
+    wand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2M15 10V8M8.5 6.5 7 5M22 6.5 20.5 5M9 22l9-9-2-2-9 9zM15 6l1.5 1.5"/><path d="M11 9 4 16"/></svg>',
     star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.784 1.401 8.169L12 18.896l-7.335 3.868 1.401-8.169L.132 9.211l8.2-1.193z"/></svg>',
     fork: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9M12 15v0"/></svg>',
     repo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
@@ -309,20 +310,83 @@
   /* ======================================================================== */
   /*  BEHAVIORS                                                               */
   /* ======================================================================== */
-  function initTheme() {
-    const toggle = $("#themeToggle");
-    const root = document.documentElement;
-    const saved = localStorage.getItem("theme");
-    if (saved) root.setAttribute("data-theme", saved);
-    else if (window.matchMedia("(prefers-color-scheme: light)").matches) root.setAttribute("data-theme", "light");
+  const THEMES = [
+    { id: "dark", label: "Dark", icon: "moon" },
+    { id: "light", label: "Light", icon: "sun" },
+    { id: "arcane", label: "Arcane", icon: "wand" },
+  ];
 
-    const paint = () => (toggle.innerHTML = root.getAttribute("data-theme") === "light" ? icons.moon : icons.sun);
-    paint();
-    toggle.addEventListener("click", () => {
-      const next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
-      root.setAttribute("data-theme", next);
-      localStorage.setItem("theme", next);
-      paint();
+  // Swap nav + section labels to their Arcane (RPG) variants when active,
+  // restoring the originals otherwise. Originals are cached on first run.
+  function applyThemeLabels(theme) {
+    const arcane = theme === "arcane";
+    const map = D.arcaneLabels || {};
+    const swap = (el, key, id) => {
+      if (!el) return;
+      if (el.dataset.orig === undefined) el.dataset.orig = el.textContent;
+      const override = arcane && map[id] && map[id][key];
+      el.textContent = override || el.dataset.orig;
+    };
+    document.querySelectorAll("[data-nav] a").forEach((a) => {
+      swap(a, "nav", a.getAttribute("href").slice(1));
+    });
+    document.querySelectorAll("#sections section[id]").forEach((sec) => {
+      swap(sec.querySelector(".section__kicker"), "kicker", sec.id);
+      swap(sec.querySelector(".section__title") || sec.querySelector(".contact__title"), "title", sec.id);
+    });
+  }
+
+  function initTheme() {
+    const root = document.documentElement;
+    const trigger = $("#themeToggle");
+    const menu = $("#themeMenu");
+    if (!trigger || !menu) return;
+
+    let current = localStorage.getItem("theme");
+    if (!THEMES.some((t) => t.id === current)) {
+      current = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+
+    const pop = document.createElement("div");
+    pop.className = "theme-menu__pop";
+    pop.setAttribute("role", "menu");
+    pop.innerHTML = THEMES.map(
+      (t) => `<button class="theme-menu__item" role="menuitemradio" data-theme-id="${t.id}">${icons[t.icon]}<span>${esc(t.label)}</span></button>`
+    ).join("");
+    menu.appendChild(pop);
+
+    const apply = (id) => {
+      const theme = THEMES.find((t) => t.id === id) || THEMES[0];
+      root.setAttribute("data-theme", theme.id);
+      localStorage.setItem("theme", theme.id);
+      trigger.innerHTML = icons[theme.icon];
+      pop.querySelectorAll("[data-theme-id]").forEach((b) => {
+        const on = b.dataset.themeId === theme.id;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-checked", String(on));
+      });
+      applyThemeLabels(theme.id);
+    };
+
+    const open = (state) => {
+      menu.classList.toggle("is-open", state);
+      trigger.setAttribute("aria-expanded", String(state));
+    };
+
+    apply(current);
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      open(!menu.classList.contains("is-open"));
+    });
+    pop.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-theme-id]");
+      if (!btn) return;
+      apply(btn.dataset.themeId);
+      open(false);
+    });
+    document.addEventListener("click", () => open(false));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") open(false);
     });
   }
 

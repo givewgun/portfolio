@@ -79,7 +79,6 @@ html[data-theme="arcane"] .hero__name { letter-spacing: -0.01em; }
 html[data-theme="arcane"] .section__kicker { color: var(--accent); }
 html[data-theme="arcane"] .nav__logo-mark,
 html[data-theme="arcane"] .btn--primary,
-html[data-theme="arcane"] .stat__value,
 html[data-theme="arcane"] .org-logo--fallback {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }

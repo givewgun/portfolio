@@ -190,6 +190,17 @@ html[data-theme="arcane"] .arcane-music {
 .arcane-music__btns button:hover { color: var(--accent); border-color: var(--accent-soft); transform: scale(1.08); }
 .arcane-music__btns button:active { transform: scale(0.94); }
 
+/* AI disclaimer / "conjuring…" note (shown only in Arcane via JS) */
+.arcane-ai-note {
+  margin-top: 1.1rem;
+  font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.02em;
+  color: var(--text-dim);
+}
+.arcane-ai-note.is-busy { color: var(--accent); }
+.arcane-ai-note.is-busy { animation: arcane-note-pulse 1.4s ease-in-out infinite; }
+@keyframes arcane-note-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .arcane-ai-note.is-busy { animation: none; } }
+
 /* ==========================================================================
    RESET / BASE
    ========================================================================== */

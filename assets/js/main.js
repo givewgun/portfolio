@@ -129,7 +129,8 @@
       const inner = `<div class="about__grid reveal">
         <div class="about__text">${text}</div>
         <div class="about__stats">${stats}</div>
-      </div>`;
+      </div>
+      <p class="arcane-ai-note" hidden></p>`;
       return sectionShell("about", "Who I am", "About", inner);
     },
 
@@ -256,6 +257,7 @@
         <h2 class="contact__title">Let's build something.</h2>
         <p class="contact__text">Open to architecture, engineering, and consulting conversations. The fastest way to reach me is LinkedIn or email.</p>
         <div class="contact__links">${links}${phone}</div>
+        <p class="arcane-ai-note" hidden></p>
       </div>`;
       return `<section class="section contact" id="contact">${inner}</section>`;
     },
@@ -324,6 +326,26 @@
   let lastParley = null;
   let lastLore = null;       // fantasy retelling of the About paragraphs
   let aboutOrigHTML = null;  // cached real About markup, for restore
+  let loreBusy = false;      // AI lore generation in flight
+  let parleyBusy = false;    // AI parley generation in flight
+
+  // Small AI note under a section: "busy" (generating), "done" (disclaimer),
+  // or "off" (hidden). Doubles as the wow-factor "this is AI-generated" label.
+  function setNote(sectionId, kind, state) {
+    const note = document.querySelector("#" + sectionId + " .arcane-ai-note");
+    if (!note) return;
+    if (state === "off") { note.hidden = true; note.classList.remove("is-busy"); return; }
+    note.hidden = false;
+    if (state === "busy") {
+      note.classList.add("is-busy");
+      note.textContent = kind === "lore"
+        ? "✦ Conjuring the lore… the arcane scribes are still writing (a few seconds)"
+        : "✦ Summoning a fresh parley… (a few seconds)";
+    } else {
+      note.classList.remove("is-busy");
+      note.textContent = "✦ Conjured by AI for the Arcane theme — switch to Dark/Light for the real version";
+    }
+  }
 
   // Swap nav + section labels to their Arcane (RPG) variants when active,
   // restoring the originals otherwise. Originals are cached on first run.
@@ -355,13 +377,15 @@
   // regenerated each summon. The real content is restored when leaving Arcane.
   function applyLore(arcane) {
     const box = document.querySelector(".about__text");
-    if (!box) return;
-    if (aboutOrigHTML === null) aboutOrigHTML = box.innerHTML;
-    if (arcane && lastLore && lastLore.length) {
-      box.innerHTML = lastLore.map((p) => `<p>${esc(p)}</p>`).join("");
-    } else {
-      box.innerHTML = aboutOrigHTML;
+    if (box && aboutOrigHTML === null) aboutOrigHTML = box.innerHTML;
+    if (!arcane) {
+      if (box) box.innerHTML = aboutOrigHTML;
+      setNote("about", "lore", "off");
+      return;
     }
+    const haveLore = lastLore && lastLore.length;
+    if (box) box.innerHTML = haveLore ? lastLore.map((p) => `<p>${esc(p)}</p>`).join("") : aboutOrigHTML;
+    setNote("about", "lore", loreBusy ? "busy" : haveLore ? "done" : "off");
   }
 
   // The contact ("Parley") section gets a fresh RPG invitation each summon.
@@ -375,6 +399,7 @@
     } else if (!arcane && textEl) {
       textEl.textContent = textEl.dataset.orig;
     }
+    setNote("contact", "parley", !arcane ? "off" : parleyBusy ? "busy" : lastParley ? "done" : "off");
   }
 
   function initTheme() {
@@ -569,6 +594,11 @@
     setLore(paragraphs) {
       if (!Array.isArray(paragraphs) || !paragraphs.length) return;
       lastLore = paragraphs.map(String);
+      if (isArcane()) applyThemeLabels("arcane");
+    },
+    setBusy(which, on) {
+      if (which === "lore") loreBusy = !!on;
+      else if (which === "parley") parleyBusy = !!on;
       if (isArcane()) applyThemeLabels("arcane");
     },
   };

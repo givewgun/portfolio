@@ -88,6 +88,10 @@ Everything else stays factual: experience, skills, projects, and links are
 never sent for rewriting. If the Worker or key is missing, it silently falls
 back to the static `arcaneLabels` and the real content in `data.js`.
 
+While the text is generating, the Lore and Parley sections show a small
+"Conjuring…" note, and once applied they carry an "AI-generated for the Arcane
+theme" disclaimer (the real version is always one Dark/Light toggle away).
+
 ### Where the image comes from
 
 `arcane.js` tries two sources, in order, then falls back to the d20 motif:

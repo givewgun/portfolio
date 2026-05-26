@@ -75,13 +75,22 @@ and a floating **d20 reroll button** (bottom-right) regenerates on demand.
 Tune the prompt/scenes in `assets/js/arcane.js`, and the RPG-flavored section
 labels in the `arcaneLabels` map in `data.js`.
 
-When the Gemini Worker is configured, Arcane also **rewrites the section
-wording** (nav/kicker/title) in RPG style via `/api/arcane-text`, and the
-**Parley** (contact) section gets a fresh "call to parley" invitation that
-**regenerates on every summon** — just like the background. Only the
-wording/labels change; the real content (job history, skills, links) is never
-touched. If the Worker or key is missing, it silently falls back to the static
-`arcaneLabels` in `data.js`.
+When the Gemini Worker is configured, Arcane also uses `/api/arcane-text` to:
+
+- **rewrite the section wording** (nav/kicker/title) in RPG style (once per
+  activation), and
+- **regenerate on every summon** (the d20 reroll, like the background): the
+  **Lore** (About) section is retold as a fantasy origin story *from the real
+  bio* — real facts/numbers preserved — and the **Parley** (contact) section
+  gets a fresh "call to parley" invitation.
+
+Everything else stays factual: experience, skills, projects, and links are
+never sent for rewriting. If the Worker or key is missing, it silently falls
+back to the static `arcaneLabels` and the real content in `data.js`.
+
+While the text is generating, the Lore and Parley sections show a small
+"Conjuring…" note, and once applied they carry an "AI-generated for the Arcane
+theme" disclaimer (the real version is always one Dark/Light toggle away).
 
 ### Where the image comes from
 

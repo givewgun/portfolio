@@ -38,7 +38,22 @@ function json(obj, status) {
   });
 }
 
-function buildPrompt(kind, seed) {
+function buildPrompt(kind, seed, base) {
+  if (kind === "lore") {
+    return (
+      "You are a master loremaster in a high-fantasy Dungeons & Dragons world. " +
+      "Retell the following real professional biography as in-world 'lore' — an " +
+      "epic origin story — while PRESERVING every real fact exactly: employers, " +
+      "the university, job titles, the scholarship, and all numbers/metrics. Do " +
+      "not invent new facts and do not alter any number. Frame real things with " +
+      "fantasy flavor (guilds, realms, arcane crafts, artifacts, scaling spells) " +
+      "but keep each fact recognizable to a reader. Keep the same number of " +
+      "paragraphs and a similar length to the source.\n" +
+      "Base biography (one string per paragraph): " + JSON.stringify(base || []) + "\n" +
+      'Return JSON: { "paragraphs": [ ... ] } with the same number of paragraphs. ' +
+      "Variation seed " + seed + " — make this retelling noticeably different from others."
+    );
+  }
   if (kind === "parley") {
     return (
       "You are a witty Dungeons & Dragons quest-giver narrating a personal " +
@@ -72,8 +87,23 @@ export async function handleArcaneText(request, env) {
   if (!key) return json({ error: "GEMINI_API_KEY not configured" }, 503);
 
   const url = new URL(request.url);
-  const kind = url.searchParams.get("kind") === "parley" ? "parley" : "labels";
-  const seed = (url.searchParams.get("seed") || String(Math.floor(Math.random() * 1e6))).slice(0, 12);
+  let kind = url.searchParams.get("kind") || "labels";
+  let seed = url.searchParams.get("seed") || String(Math.floor(Math.random() * 1e6));
+  let base = null; // source content (e.g. the real About paragraphs) for `lore`
+
+  if (request.method === "POST") {
+    try {
+      const body = await request.json();
+      if (body && typeof body === "object") {
+        if (body.kind) kind = body.kind;
+        if (body.seed) seed = String(body.seed);
+        if (Array.isArray(body.base)) base = body.base.map(String).slice(0, 12);
+      }
+    } catch (e) { /* ignore malformed body, fall back to query params */ }
+  }
+
+  kind = kind === "parley" || kind === "lore" ? kind : "labels";
+  seed = String(seed).slice(0, 12);
   const model = env.GEMINI_TEXT_MODEL || DEFAULT_TEXT_MODEL;
 
   const endpoint =
@@ -82,10 +112,10 @@ export async function handleArcaneText(request, env) {
     ":generateContent?key=" + encodeURIComponent(key);
 
   const payload = {
-    contents: [{ parts: [{ text: buildPrompt(kind, seed) }] }],
+    contents: [{ parts: [{ text: buildPrompt(kind, seed, base) }] }],
     generationConfig: {
       responseMimeType: "application/json",
-      temperature: kind === "parley" ? 1.15 : 0.9,
+      temperature: kind === "labels" ? 0.9 : 1.1,
     },
   };
 

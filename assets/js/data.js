@@ -208,6 +208,14 @@ const portfolioData = {
   /* ----------------------------------------------------------------------- */
   projects: [
     {
+      title: "Legion",
+      org: "Multi-Agent Stock Signal Engine",
+      url: "https://github.com/givewgun/legion",
+      description:
+        "A leaderless multi-agent stock-signal engine where independent expert agents — technical, news, social-sentiment, and contrarian — vote on trades, debate dissent across rounds, and reach deterministic consensus via weighted aggregation of stance, conviction, and learned reliability (self-tuning from backtested Brier scores). A non-voting risk manager caps conviction on volatile setups without flipping direction. Five processes communicate over a NATS bus with local Ollama inference, so the same math reproduces on every node. Advisory only — never places real trades.",
+      tags: ["Node.js", "NATS", "Ollama (local LLM)", "PostgreSQL", "Vitest", "Docker"],
+    },
+    {
       title: "GunVest",
       org: "Investment Dashboard · Full-stack",
       url: "https://github.com/givewgun/gunvest-public",

@@ -120,10 +120,13 @@ const portfolioData = {
       start: "Jan 2024",
       end: "Dec 2024",
       bullets: [
-        "Led the architecture redesign of Adrich's backend to scale IoT Smart Labels from 20,000 to 5 million devices using Node.js (Express) and Python (FastAPI).",
-        "Developed a data transfer protocol for smart labels — implementing ECL compression in C on-device with caching and decompression on the Node.js backend — cutting transfer latency and reducing payload size by 50%.",
-        "Designed and implemented a calibration dashboard in React to streamline IoT Smart Label device setup.",
-        "Designed and implemented CI/CD pipelines using GitLab CI, deploying solutions on Digital Ocean.",
+        "Directed the architectural redesign of an enterprise IoT backend, successfully scaling system capacity from 20,000 to 5 million concurrent Smart Label devices utilizing Node.js (Express) and Python (FastAPI).",
+        "Formalized the system design process by authoring comprehensive Architecture Design Records (ADRs) to document technical trade-offs, define system revisions, and align stakeholders on the scaling strategy.",
+        "Architected an API Gateway and message queue layer in front of the existing legacy backend, decoupling services to dramatically improve system throughput, request routing, and fault tolerance under high-volume IoT traffic.",
+        "Engineered a low-latency data transfer protocol for resource-constrained devices, implementing ECL compression in C on-device with backend caching and decompression, slashing payload sizes by 50%.",
+        "Developed a custom middleware simulator to replicate high-concurrency smart label data, enabling rigorous load testing and validation of the revised architecture prior to production deployment.",
+        "Streamlined device provisioning by designing and deploying a React-based calibration dashboard to accelerate IoT Smart Label setup.",
+        "Modernized deployment infrastructure by establishing automated CI/CD workflows via GitLab CI and GitHub Actions (`static.yml`), ensuring highly reliable, zero-downtime deployments on Digital Ocean."
       ],
       tags: ["Node.js", "FastAPI", "C", "React", "GitLab CI", "IoT"],
     },

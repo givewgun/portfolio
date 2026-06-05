@@ -212,7 +212,7 @@ const portfolioData = {
       org: "Multi-Agent Stock Signal Engine",
       url: "https://github.com/givewgun/legion",
       description:
-        "Inspired by the Geth from Mass Effect — \"we are Legion; together we are unique.\" A leaderless multi-agent stock-signal engine where independent expert agents — technical, news, social-sentiment, and contrarian — vote on trades, debate dissent across rounds, and reach deterministic consensus via weighted aggregation of stance, conviction, and learned reliability (self-tuning from backtested Brier scores). A non-voting risk manager caps conviction on volatile setups without flipping direction. Five processes communicate over a NATS bus with local Ollama inference, so the same math reproduces on every node. Advisory only — never places real trades.",
+        "\"Every point of view is useful, even those that are wrong — if we can judge why a wrong view was accepted.\" — Legion, Mass Effect 2. A leaderless multi-agent stock-signal engine where independent expert agents — technical, news, social-sentiment, and contrarian — vote on trades, debate dissent across rounds, and reach deterministic consensus via weighted aggregation of stance, conviction, and learned reliability (self-tuning from backtested Brier scores). A non-voting risk manager caps conviction on volatile setups without flipping direction. Five processes communicate over a NATS bus with local Ollama inference, so the same math reproduces on every node. Advisory only — never places real trades.",
       tags: ["Node.js", "NATS", "Ollama (local LLM)", "PostgreSQL", "Vitest", "Docker"],
     },
     {

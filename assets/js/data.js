@@ -235,12 +235,12 @@ const portfolioData = {
       tags: ["TypeScript", "React + Vite", "Fastify", "CesiumJS", "Docker", "Cloudflare Tunnel"],
     },
     {
-      title: "MangaDL",
-      org: "Desktop App · Electron",
-      url: "https://github.com/givewgun/manga-dl",
+      title: "Oculory",
+      org: "Observability Stack · Self-hosted",
+      url: "https://github.com/givewgun/oculory",
       description:
-        "A cross-platform Electron desktop app to browse, read, and download manga from multiple sources through a pluggable adapter system (native MangaDex API plus manifest-based and adaptive HTML probing). Resilient bulk downloads with pause/resume, exponential-backoff retries, crash recovery, and automated CBZ library management.",
-      tags: ["TypeScript", "Electron", "React", "Vite", "SQLite"],
+        "A unified Grafana-based observability stack for an Oracle Always-Free VM: metrics (Prometheus), logs (Loki), and distributed traces (Tempo) collected by a single Grafana Alloy agent with trace-to-log-to-metric correlation. Alertmanager fans out to Telegram and email; Blackbox synthetic probes and Cloudflare Access cover external visibility and secure ingress. ARM64 Docker Compose — production-grade visibility at zero runtime cost.",
+      tags: ["Grafana", "Prometheus", "Loki", "Tempo", "Alloy", "Alertmanager", "Docker"],
     },
     {
       title: "elscione-dl",

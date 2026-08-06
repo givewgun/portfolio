@@ -96,7 +96,7 @@ const portfolioData = {
     {
       company: "Bank of Thailand",
       logo: "https://commons.wikimedia.org/wiki/Special:FilePath/Seal_of_the_Bank_of_Thailand.png?width=256",
-      role: "Software Architect",
+      role: "Senior Software Architect",
       location: "Bangkok, Thailand",
       start: "Jan 2025",
       end: "Present",

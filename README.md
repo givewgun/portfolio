@@ -70,7 +70,7 @@ Cloudflare DNS add a `CNAME` record for `givewgun.com` → `<user>.github.io`
 
 ```
 index.html                         # markup shell with pre-populated static fallback for crawlers/no-JS
-architecture.html                  # Architecture & Design Records (4 systems, inline SVG diagrams, 65+ ADR links)
+architecture.html                  # Architecture & Design Records (6 systems, inline SVG diagrams, 60+ ADR & threat-model links)
 launch.html                        # Flight Profile (career launch + live manifest)
 mars.html                          # Mars mission planner: live Earth–Mars transfer window from real orbital elements, Hohmann transfer animation, and a playable propulsive landing
 assets/css/styles.css              # design system, layout, every section, theme tokens

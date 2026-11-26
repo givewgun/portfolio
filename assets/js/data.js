@@ -47,6 +47,9 @@ const portfolioData = {
       "tutorial", "study", "recitation", "assignment", "bootcamp",
       "boot-camp", "essential", "portfolio", "givewgun",
       "elscione-dl", "flappyai", "battleducks", "ramaiv",
+      "steam-workshop", "steam-refurbished", "binanceth", "enigma",
+      "manga-dl", "breast-cancer", "wongnai", "space-thunder",
+      "python_misc", "embededproject", "parallel-chat", "nicebook",
     ],
     // Max number of repos to show in the live section.
     githubRepoLimit: 6,
@@ -252,19 +255,29 @@ const portfolioData = {
   },
 
   /* ----------------------------------------------------------------------- */
-  /*  PROJECTS  (curated top systems; tandem lives in the Launch Spotlight)  */
+  /*  PROJECTS  (curated top 5 systems; tandem lives in the Launch Spotlight)*/
   /* ----------------------------------------------------------------------- */
   projects: [
     {
       title: "Legion",
-      org: "Multi-Agent Consensus Engine · 36 ADRs",
+      org: "Multi-Agent Consensus Engine · 35 ADRs",
       url: "https://github.com/givewgun/legion",
       archUrl: "architecture.html#legion",
-      archLabel: "Architecture & 36 ADRs",
+      archLabel: "Architecture & 35 ADRs",
       featured: true,
       description:
         "A leaderless multi-agent stock-signal engine over NATS with no prime decider: 4 LLM voters plus a deterministic risk node debate dissent across rounds and converge via BFT-flavored weighted aggregation, Pearson redundancy-discounted quorum, anti-herding guards, crash-recoverable state replay, and an outbox-decoupled paper execution pipeline.",
       tags: ["Node.js", "NATS", "Ollama", "PostgreSQL", "OpenTelemetry", "Docker"],
+    },
+    {
+      title: "local-llm-server",
+      org: "Self-Hosted AI Inference Gateway · 5 ADRs",
+      url: "https://github.com/givewgun/local-llm-server",
+      archUrl: "architecture.html#local-llm-server",
+      archLabel: "Architecture & 5 ADRs",
+      description:
+        "Production-grade OpenAI-compatible LLM API on a home GPU with zero open router ports: vLLM continuous batching + Ollama zero-downtime model-swap fallback, LiteLLM virtual keys & RPM/TPM caps, path-allowlisted Cloudflare Tunnel public ingress, Tailscale-isolated admin/Grafana dashboards, and a single llmctl CLI.",
+      tags: ["vLLM", "LiteLLM", "Ollama", "Cloudflare Tunnel", "Tailscale", "Prometheus", "Docker"],
     },
     {
       title: "Oculory",
@@ -277,6 +290,16 @@ const portfolioData = {
       tags: ["Grafana", "Prometheus", "Loki", "Tempo", "Alloy", "Alertmanager", "Docker"],
     },
     {
+      title: "esp32-wol",
+      org: "Zero-Inbound-Port IoT & Remote Control · Threat Model",
+      url: "https://github.com/givewgun/esp32-wol",
+      archUrl: "architecture.html#esp32-wol",
+      archLabel: "Security & Threat Model",
+      description:
+        "Hardware-to-cloud remote workstation wake & coding session controller built with zero open home ports: native ESP-IDF C firmware over outbound-only TLS MQTT, dual-verified Cloudflare Access RS256 JWTs, HMAC-SHA256 command & reply signing with nonce/clock replay guards, argv-only Python PC agent, and a documented pentest.",
+      tags: ["C (ESP-IDF)", "MQTT TLS", "HMAC-SHA256", "Python", "Cloudflare Access", "Docker"],
+    },
+    {
       title: "Horizon",
       org: "Resilient Space & Earth Telemetry · 6 ADRs",
       url: "https://github.com/givewgun/horizon",
@@ -285,17 +308,6 @@ const portfolioData = {
       description:
         "A real-time space & earth monitoring platform aggregating 7+ volatile third-party feeds behind a single-process Fastify proxy with single-flight TTL caching, last-known-good stale fallback, honest freshness badges, client-side SGP4 orbit propagation on lazy-loaded CesiumJS, and a custom Canvas stereographic planetarium.",
       tags: ["TypeScript", "React + Vite", "Fastify", "CesiumJS", "SQLite", "Cloudflare Tunnel"],
-    },
-    {
-      title: "GunVest",
-      org: "Investment Command Center · 10 ADRs",
-      url: "https://github.com/givewgun/gunvest-public",
-      archUrl: "https://github.com/givewgun/gunvest-public/blob/main/docs/ARCHITECTURE.md",
-      archLabel: "Architecture & 10 ADRs",
-      archExternal: true,
-      description:
-        "A full-stack investment command center with macro tracking, behavioral coaching, and AI sentiment aggregation across Finnhub, StockTwits, Reddit, and Google Gemini — backed by PostgreSQL, Socket.io real-time updates, and a GDELT + RSS geopolitical impact ingestion pipeline.",
-      tags: ["React 18", "Node.js / Express", "PostgreSQL", "Socket.io", "Gemini AI", "Docker"],
     },
   ],
 

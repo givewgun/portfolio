@@ -221,9 +221,15 @@
         <div class="projects__grid">
           <article class="project-card spot project-card--featured reveal is-visible">
             <h3 class="project-card__title">Legion</h3>
-            <div class="project-card__org">Multi-Agent Consensus Engine · 36 ADRs</div>
+            <div class="project-card__org">Multi-Agent Consensus Engine · 35 ADRs</div>
             <p class="project-card__desc">Leaderless multi-agent stock-signal engine over NATS with BFT-flavored weighted aggregation, Pearson redundancy-discounted quorum, anti-herding guards, crash-recoverable emitter, and outbox-decoupled execution.</p>
-            <a class="project-card__more" href="architecture.html#legion">Architecture &amp; 36 ADRs →</a>
+            <a class="project-card__more" href="architecture.html#legion">Architecture &amp; 35 ADRs →</a>
+          </article>
+          <article class="project-card spot reveal is-visible">
+            <h3 class="project-card__title">local-llm-server</h3>
+            <div class="project-card__org">Self-Hosted AI Inference Gateway · 5 ADRs</div>
+            <p class="project-card__desc">Production OpenAI-compatible LLM API on a home GPU with vLLM + Ollama fallback, LiteLLM virtual keys, path-allowlisted Cloudflare Tunnel ingress, and Tailscale-only admin &amp; Grafana dashboards.</p>
+            <a class="project-card__more" href="architecture.html#local-llm-server">Architecture &amp; 5 ADRs →</a>
           </article>
           <article class="project-card spot reveal is-visible">
             <h3 class="project-card__title">Oculory</h3>
@@ -232,24 +238,24 @@
             <a class="project-card__more" href="architecture.html#oculory">Architecture &amp; 3-Pillar Stack →</a>
           </article>
           <article class="project-card spot reveal is-visible">
+            <h3 class="project-card__title">esp32-wol</h3>
+            <div class="project-card__org">Zero-Inbound-Port IoT &amp; Remote Control · Threat Model</div>
+            <p class="project-card__desc">Hardware-to-cloud remote workstation wake &amp; session controller: ESP-IDF C firmware over outbound-only TLS MQTT, dual-verified Cloudflare Access JWTs, HMAC-SHA256 signed commands, and a documented pentest.</p>
+            <a class="project-card__more" href="architecture.html#esp32-wol">Security &amp; Threat Model →</a>
+          </article>
+          <article class="project-card spot reveal is-visible">
             <h3 class="project-card__title">Horizon</h3>
             <div class="project-card__org">Resilient Space &amp; Earth Telemetry · 6 ADRs</div>
             <p class="project-card__desc">Single-process Fastify + React/CesiumJS dashboard with single-flight TTL caching, last-known-good stale fallback, and honest freshness badges across 7+ third-party APIs.</p>
             <a class="project-card__more" href="architecture.html#horizon">Architecture &amp; 6 ADRs →</a>
           </article>
-          <article class="project-card spot reveal is-visible">
-            <h3 class="project-card__title">GunVest</h3>
-            <div class="project-card__org">Investment Command Center · 10 ADRs</div>
-            <p class="project-card__desc">Full-stack investment command center aggregating Finnhub, StockTwits, Reddit, GDELT, and Google Gemini with PostgreSQL and Socket.io.</p>
-            <a class="project-card__more" href="https://github.com/givewgun/gunvest-public/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">Architecture &amp; 10 ADRs →</a>
-          </article>
         </div>
         <div class="arch-callout spot reveal is-visible">
           <div>
             <p class="arch-callout__kicker">Architecture &amp; Design Records</p>
-            <p class="arch-callout__text">System diagrams, 65+ public ADRs, rejected alternatives, and failure-mode engineering across Legion, tandem, Oculory, and Horizon.</p>
+            <p class="arch-callout__text">System diagrams, 60+ public ADRs, threat models, rejected alternatives, and failure-mode engineering across Legion, tandem, local-llm-server, esp32-wol, Oculory, and Horizon.</p>
           </div>
-          <a class="btn btn--primary" href="architecture.html">Read case studies →</a>
+          <a class="btn btn--primary" href="architecture.html">Read all 6 case studies →</a>
         </div>
       </section>
 

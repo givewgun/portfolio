@@ -370,9 +370,9 @@
       const archBanner = `<div class="arch-callout spot reveal">
         <div>
           <p class="arch-callout__kicker">Architecture &amp; Design Records</p>
-          <p class="arch-callout__text">System diagrams, 65+ public ADRs, rejected alternatives, and failure-mode engineering across Legion, tandem, Oculory, and Horizon.</p>
+          <p class="arch-callout__text">System diagrams, 60+ public ADRs, threat models, rejected alternatives, and failure-mode engineering across Legion, tandem, local-llm-server, esp32-wol, Oculory, and Horizon.</p>
         </div>
-        <a class="btn btn--primary" href="architecture.html">Read case studies${icons.arrow}</a>
+        <a class="btn btn--primary" href="architecture.html">Read all 6 case studies${icons.arrow}</a>
       </div>`;
       return sectionShell("projects", "Missions flown", "Selected Systems", `<div class="projects__grid">${cards}</div>${archBanner}`);
     },

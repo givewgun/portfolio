@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Architecture &amp; Design Records — Gun Kaewngarm</title>
-  <meta name="description" content="System architecture diagrams, Architecture Decision Records (ADRs), rejected alternatives, and failure-mode engineering across Gun Kaewngarm's open-source systems: Legion, tandem, Oculory, and Horizon." />
+  <meta name="description" content="System architecture diagrams, Architecture Decision Records (ADRs), threat models, and failure-mode engineering across Gun Kaewngarm's open-source systems: Legion, tandem, local-llm-server, esp32-wol, Oculory, and Horizon." />
   <meta name="author" content="Gun Kaewngarm" />
   <meta name="theme-color" content="#05070d" />
   <meta name="color-scheme" content="dark light" />
@@ -23,7 +23,7 @@
 
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Architecture &amp; Design Records — Gun Kaewngarm" />
-  <meta property="og:description" content="Four documented open-source systems with 65+ public ADRs, system diagrams, trade-offs, and failure-mode mitigations." />
+  <meta property="og:description" content="Six documented open-source systems with 60+ public ADRs, threat models, system diagrams, trade-offs, and failure-mode mitigations." />
   <meta property="og:url" content="https://givewgun.com/architecture.html" />
   <meta property="og:image" content="https://givewgun.com/assets/og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -51,9 +51,10 @@
         <a href="index.html">Portfolio</a>
         <a href="#legion">Legion</a>
         <a href="#tandem">tandem</a>
+        <a href="#local-llm-server">LLM Server</a>
+        <a href="#esp32-wol">ESP32</a>
         <a href="#oculory">Oculory</a>
         <a href="#horizon">Horizon</a>
-        <a href="#nda">Enterprise NDA</a>
         <a class="nav__flight" href="launch.html">Flight</a>
         <a class="nav__flight nav__mars" href="mars.html">Mars</a>
       </nav>
@@ -75,23 +76,26 @@
       <h1 class="arch-hero__title">Architecture &amp; Design Records</h1>
       <p class="arch-hero__lede">
         Enterprise architecture work at the Bank of Thailand and Adrich is under NDA. Rather than hand-waving behind bullet points,
-        here are four open-source systems I designed, built, and documented in public — with system diagrams, Architecture Decision
-        Records (ADRs), rejected alternatives, and the failure modes they are engineered to survive.
+        here are six open-source systems I designed, built, and documented in public — spanning distributed consensus, AI inference
+        infrastructure, zero-trust IoT security, observability, and resilient telemetry — with system diagrams, ADRs, threat models,
+        and the failure modes they are engineered to survive.
       </p>
       <div class="arch-hero__stats">
-        <div class="arch-stat"><b>4</b><span>Documented systems</span></div>
-        <div class="arch-stat"><b>67</b><span>Public ADRs across repos</span></div>
+        <div class="arch-stat"><b>6</b><span>Documented systems</span></div>
+        <div class="arch-stat"><b>60+</b><span>Public ADRs across repos</span></div>
         <div class="arch-stat"><b>0</b><span>NDA details exposed</span></div>
         <div class="arch-stat"><b>100%</b><span>Verifiable on GitHub</span></div>
       </div>
     </section>
 
     <nav class="arch-toc" aria-label="Case studies">
-      <a href="#legion"><em>01</em> Legion · Leaderless Consensus (36 ADRs)</a>
-      <a href="#tandem"><em>02</em> tandem · Zero-Dep Agent Bridge (15 ADRs)</a>
-      <a href="#oculory"><em>03</em> Oculory · 3-Pillar Observability</a>
-      <a href="#horizon"><em>04</em> Horizon · Resilient Telemetry (6 ADRs)</a>
-      <a href="#nda"><em>05</em> Enterprise NDA Scope</a>
+      <a href="#legion"><em>01</em> Legion · Consensus (35 ADRs)</a>
+      <a href="#tandem"><em>02</em> tandem · Agent Bridge (15 ADRs)</a>
+      <a href="#local-llm-server"><em>03</em> local-llm-server · AI Gateway (5 ADRs)</a>
+      <a href="#esp32-wol"><em>04</em> esp32-wol · Zero-Trust IoT Security</a>
+      <a href="#oculory"><em>05</em> Oculory · 3-Pillar Observability</a>
+      <a href="#horizon"><em>06</em> Horizon · Resilient Telemetry (6 ADRs)</a>
+      <a href="#nda"><em>07</em> Enterprise NDA Scope</a>
     </nav>
 
     <!-- =================================================================== -->
@@ -102,7 +106,7 @@
         <div>
           <div class="case__meta">
             <span class="case__num">Case Study 01</span>
-            <span class="case__pill">36 Public ADRs</span>
+            <span class="case__pill">35 Public ADRs</span>
             <span class="case__pill case__pill--ok">Distributed Systems · NATS</span>
           </div>
           <h2 class="case__title">Legion — Leaderless Multi-Agent Consensus Engine</h2>
@@ -113,7 +117,7 @@
         </div>
         <div class="case__links">
           <a class="btn btn--primary" href="https://github.com/givewgun/legion/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md ↗</a>
-          <a class="btn btn--ghost" href="https://github.com/givewgun/legion/tree/main/docs/adr" target="_blank" rel="noopener">Browse 36 ADRs ↗</a>
+          <a class="btn btn--ghost" href="https://github.com/givewgun/legion/tree/main/docs/adr" target="_blank" rel="noopener">Browse 35 ADRs ↗</a>
         </div>
       </div>
 
@@ -405,13 +409,307 @@
     </article>
 
     <!-- =================================================================== -->
-    <!-- 03. OCULORY                                                         -->
+    <!-- 03. LOCAL-LLM-SERVER                                                -->
+    <!-- =================================================================== -->
+    <article class="case" id="local-llm-server">
+      <div class="case__head">
+        <div>
+          <div class="case__meta">
+            <span class="case__num">Case Study 03</span>
+            <span class="case__pill">5 Public ADRs</span>
+            <span class="case__pill case__pill--ok">AI Infra · Split Control Plane</span>
+          </div>
+          <h2 class="case__title">local-llm-server — Self-Hosted AI Inference Gateway</h2>
+          <p class="case__subtitle">
+            Production-grade OpenAI-compatible LLM API on a single home GPU with vLLM continuous batching, zero-downtime Ollama
+            fallback during model swaps, multi-tenant LiteLLM virtual keys, Cloudflare Tunnel path-allowlisted ingress, and a
+            Tailscale-only admin &amp; observability plane.
+          </p>
+        </div>
+        <div class="case__links">
+          <a class="btn btn--primary" href="https://github.com/givewgun/local-llm-server/blob/main/docs/architecture.md" target="_blank" rel="noopener">architecture.md ↗</a>
+          <a class="btn btn--ghost" href="https://github.com/givewgun/local-llm-server/blob/main/docs/security.md" target="_blank" rel="noopener">security.md ↗</a>
+        </div>
+      </div>
+
+      <figure class="diagram">
+        <div class="diagram__bar">
+          <span class="diagram__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>local-llm-server · public data plane (Cloudflare Tunnel) vs private admin plane (Tailscale)</span>
+        </div>
+        <div class="diagram__canvas">
+          <svg viewBox="0 0 920 275" role="img" aria-label="local-llm-server architecture diagram: Public clients connect via HTTPS through Cloudflare WAF and outbound-only cloudflared tunnel restricted to /v1 and health routes into LiteLLM gateway backed by PostgreSQL virtual keys, routing to primary vLLM GPU inference with automatic Ollama fallback; admin UI and Prometheus/Grafana GPU dashboards are isolated on Tailscale only.">
+            <defs>
+              <marker id="arr-llm" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--text-dim)" />
+              </marker>
+              <marker id="arr-llm-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent)" />
+              </marker>
+              <marker id="arr-llm-o" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent-2)" />
+              </marker>
+              <marker id="arr-llm-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--ok)" />
+              </marker>
+            </defs>
+
+            <!-- Public plane -->
+            <rect class="svg-box" x="16" y="34" width="136" height="58" rx="8" />
+            <text class="svg-title" x="84" y="58" text-anchor="middle">Public Clients</text>
+            <text class="svg-sub" x="84" y="75" text-anchor="middle">OpenAI SDKs · Apps</text>
+
+            <rect class="svg-box svg-box--accent" x="190" y="24" width="184" height="78" rx="10" />
+            <text class="svg-title" x="282" y="48" text-anchor="middle">Cloudflare Tunnel</text>
+            <text class="svg-sub" x="282" y="66" text-anchor="middle">TLS · WAF · outbound-only</text>
+            <text class="svg-sub" x="282" y="82" text-anchor="middle">allow: /v1/* · /health → else 404</text>
+
+            <!-- Gateway -->
+            <rect class="svg-box svg-box--amber" x="416" y="24" width="212" height="104" rx="10" />
+            <text class="svg-title" x="522" y="48" text-anchor="middle">LiteLLM Gateway + PG</text>
+            <text class="svg-sub" x="522" y="67" text-anchor="middle">virtual keys · RPM/TPM caps</text>
+            <text class="svg-sub" x="522" y="84" text-anchor="middle">stable alias: local-chat</text>
+            <text class="svg-sub" x="522" y="101" text-anchor="middle">no prompt logging · fallback</text>
+            <text class="svg-sub" x="522" y="117" text-anchor="middle">127.0.0.1 loopback only</text>
+
+            <!-- Engines -->
+            <rect class="svg-box svg-box--ok" x="676" y="20" width="224" height="62" rx="10" />
+            <text class="svg-title" x="788" y="44" text-anchor="middle">vLLM (Primary · GPU)</text>
+            <text class="svg-sub" x="788" y="62" text-anchor="middle">PagedAttention · batching · AWQ</text>
+
+            <rect class="svg-box" x="676" y="96" width="224" height="58" rx="10" />
+            <text class="svg-title" x="788" y="120" text-anchor="middle">Ollama (Fallback / GGUF)</text>
+            <text class="svg-sub" x="788" y="137" text-anchor="middle">serves traffic during vLLM reloads</text>
+
+            <!-- Private Admin Plane -->
+            <rect class="svg-group" x="16" y="168" width="884" height="88" rx="10" />
+            <text class="svg-sub" x="30" y="186">PRIVATE ADMIN &amp; OBSERVABILITY PLANE (TAILSCALE TAILNET ONLY · NEVER ROUTED PUBLICLY)</text>
+
+            <rect class="svg-box svg-box--ok" x="32" y="198" width="188" height="44" rx="8" />
+            <text class="svg-title" x="126" y="217" text-anchor="middle">Operator (Tailnet SSO)</text>
+            <text class="svg-sub" x="126" y="233" text-anchor="middle">llmctl CLI · tailscale serve</text>
+
+            <rect class="svg-box" x="266" y="198" width="240" height="44" rx="8" />
+            <text class="svg-title" x="386" y="217" text-anchor="middle">LiteLLM Admin UI + Key API</text>
+            <text class="svg-sub" x="386" y="233" text-anchor="middle">key minting · revocations · budgets</text>
+
+            <rect class="svg-box" x="552" y="198" width="330" height="44" rx="8" />
+            <text class="svg-title" x="717" y="217" text-anchor="middle">Prometheus + Grafana (3 Dashboards)</text>
+            <text class="svg-sub" x="717" y="233" text-anchor="middle">tokens/s · TTFT · KV cache · per-key errors · GPU VRAM</text>
+
+            <path class="svg-line svg-line--accent" d="M 152 63 L 188 63" marker-end="url(#arr-llm-a)" />
+            <path class="svg-line svg-line--accent" d="M 374 63 L 414 63" marker-end="url(#arr-llm-a)" />
+            <path class="svg-line svg-line--ok" d="M 628 56 L 674 51" marker-end="url(#arr-llm-g)" />
+            <path class="svg-line svg-line--amber svg-line--dash" d="M 628 96 L 674 120" marker-end="url(#arr-llm-o)" />
+            <path class="svg-line svg-line--ok" d="M 220 220 L 264 220" marker-end="url(#arr-llm-g)" />
+            <path class="svg-line" d="M 506 220 L 550 220" marker-end="url(#arr-llm)" />
+            <path class="svg-line" d="M 717 198 L 717 156" marker-end="url(#arr-llm)" />
+          </svg>
+        </div>
+      </figure>
+
+      <div class="case__grid">
+        <div class="case-card spot">
+          <div class="case-card__label">Problem &amp; Constraints</div>
+          <p>
+            Exposing a single home GPU (16 GB VRAM behind consumer NAT/CGNAT) as a multi-tenant OpenAI-compatible API requires
+            high concurrent throughput, zero open router ports, strict isolation between public inference and key-management admin
+            routes, and clean model swaps without breaking client configs.
+          </p>
+        </div>
+
+        <div class="case-card spot">
+          <div class="case-card__label">Selected ADRs (Verified on GitHub)</div>
+          <div class="adr-list">
+            <a class="adr-link" href="https://github.com/givewgun/local-llm-server/blob/main/docs/adr/0001-inference-engine.md" target="_blank" rel="noopener">
+              <b>ADR-0001</b><span>vLLM primary (PagedAttention + batching) with Ollama fallback</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/local-llm-server/blob/main/docs/adr/0002-api-gateway.md" target="_blank" rel="noopener">
+              <b>ADR-0002</b><span>LiteLLM + Postgres virtual keys, RPM/TPM caps &amp; stable aliases</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/local-llm-server/blob/main/docs/adr/0003-public-ingress.md" target="_blank" rel="noopener">
+              <b>ADR-0003</b><span>Git-managed Cloudflare Tunnel with strict path allowlist</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/local-llm-server/blob/main/docs/adr/0004-admin-plane.md" target="_blank" rel="noopener">
+              <b>ADR-0004</b><span>Admin UI, key minting &amp; Grafana isolated on Tailscale tailnet</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/local-llm-server/blob/main/docs/adr/0005-orchestration.md" target="_blank" rel="noopener">
+              <b>ADR-0005</b><span>Docker Compose profiles + pinned tags + single llmctl CLI</span><em>↗</em>
+            </a>
+          </div>
+        </div>
+
+        <div class="case-card case-card--warn spot">
+          <div class="case-card__label">Rejected Alternatives</div>
+          <ul>
+            <li><strong>Direct vLLM behind nginx + static key:</strong> Rejected — no per-client rate caps, no usage accounting, and clients break on every model swap.</li>
+            <li><strong>Router port-forward + Caddy/Let's Encrypt:</strong> Rejected — exposes home IP, breaks under CGNAT, and leaves DDoS protection on the host.</li>
+            <li><strong>Tailscale Funnel for public traffic:</strong> Rejected — locked to <code>*.ts.net</code> with no WAF or custom domain path filtering.</li>
+          </ul>
+        </div>
+
+        <div class="case-card case-card--ok spot">
+          <div class="case-card__label">Security &amp; Operational Controls</div>
+          <ul>
+            <li><strong>Two-layer admin isolation:</strong> Public tunnel only routes <code>^/(v1/.*|health/liveliness)$</code> (everything else including <code>/metrics</code> and admin UI returns 404) <em>and</em> master key never leaves the host.</li>
+            <li><strong>Zero prompt leakage in logs:</strong> <code>turn_off_message_logging: true</code> keeps spend/usage metadata while never persisting raw prompts or completions.</li>
+            <li><strong>Zero-downtime model switching:</strong> Clients target <code>local-chat</code>; while vLLM reloads a new YAML preset, LiteLLM transparently serves requests from Ollama.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- =================================================================== -->
+    <!-- 04. ESP32-WOL                                                       -->
+    <!-- =================================================================== -->
+    <article class="case" id="esp32-wol">
+      <div class="case__head">
+        <div>
+          <div class="case__meta">
+            <span class="case__num">Case Study 04</span>
+            <span class="case__pill">ESP-IDF C · Threat Model</span>
+            <span class="case__pill case__pill--ok">Zero-Trust IoT · Pentested</span>
+          </div>
+          <h2 class="case__title">esp32-wol — Zero-Inbound-Port IoT &amp; Remote Wake Security</h2>
+          <p class="case__subtitle">
+            Hardware-to-cloud remote workstation boot &amp; AI-coding control plane: native ESP-IDF C firmware over outbound-only TLS
+            MQTT, dual-verified Cloudflare Access JWTs, HMAC-SHA256 signed commands with replay protection, and a written pentest.
+          </p>
+        </div>
+        <div class="case__links">
+          <a class="btn btn--primary" href="https://github.com/givewgun/esp32-wol/blob/main/docs/security.md" target="_blank" rel="noopener">security.md ↗</a>
+          <a class="btn btn--ghost" href="https://github.com/givewgun/esp32-wol/blob/main/docs/mqtt-protocol.md" target="_blank" rel="noopener">MQTT Protocol ↗</a>
+          <a class="btn btn--ghost" href="https://github.com/givewgun/esp32-wol/blob/main/docs/superpowers/specs/2026-10-30-pc-dashboard-pentest.md" target="_blank" rel="noopener">Pentest Report ↗</a>
+        </div>
+      </div>
+
+      <figure class="diagram">
+        <div class="diagram__bar">
+          <span class="diagram__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>esp32-wol · outbound-only home network + dual-layer auth &amp; HMAC command signing</span>
+        </div>
+        <div class="diagram__canvas">
+          <svg viewBox="0 0 920 260" role="img" aria-label="esp32-wol security architecture diagram: Browser reaches Express dashboard through Cloudflare Access where both edge and container verify the RS256 Access JWT. Dashboard signs remote session commands with HMAC-SHA256, nonce id, and timestamp over TLS 8883 MQTT. Inside the home LAN with zero open ports, ESP32 ESP-IDF C firmware receives wake to broadcast a Wake-on-LAN magic packet, and the Windows PC agent verifies HMAC signatures and replay windows before executing argv-only commands.">
+            <defs>
+              <marker id="arr-e" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--text-dim)" />
+              </marker>
+              <marker id="arr-e-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent)" />
+              </marker>
+              <marker id="arr-e-o" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent-2)" />
+              </marker>
+              <marker id="arr-e-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--ok)" />
+              </marker>
+            </defs>
+
+            <!-- Client / Dashboard -->
+            <rect class="svg-box" x="16" y="28" width="174" height="72" rx="8" />
+            <text class="svg-title" x="103" y="52" text-anchor="middle">Browser / Phone</text>
+            <text class="svg-sub" x="103" y="69" text-anchor="middle">Cloudflare Access</text>
+            <text class="svg-sub" x="103" y="85" text-anchor="middle">(single allowed email)</text>
+
+            <rect class="svg-box svg-box--accent" x="16" y="136" width="174" height="96" rx="10" />
+            <text class="svg-title" x="103" y="160" text-anchor="middle">Dashboard Container</text>
+            <text class="svg-sub" x="103" y="178" text-anchor="middle">verifies RS256 JWT (JWKS)</text>
+            <text class="svg-sub" x="103" y="195" text-anchor="middle">signs cmd: HMAC-SHA256</text>
+            <text class="svg-sub" x="103" y="212" text-anchor="middle">unique id + ts · 4KB cap</text>
+
+            <!-- Cloud MQTT Broker -->
+            <rect class="svg-box svg-box--amber" x="238" y="68" width="196" height="118" rx="10" />
+            <text class="svg-title" x="336" y="96" text-anchor="middle">Cloud MQTT (TLS 8883)</text>
+            <text class="svg-sub" x="336" y="116" text-anchor="middle">wol/desktop (non-retained)</text>
+            <text class="svg-sub" x="336" y="134" text-anchor="middle">wol/desktop/pc/cmd (signed)</text>
+            <text class="svg-sub" x="336" y="152" text-anchor="middle">wol/desktop/pc/reply (signed)</text>
+            <text class="svg-sub" x="336" y="170" text-anchor="middle">LWT online/offline presence</text>
+
+            <!-- Home LAN boundary -->
+            <rect class="svg-group" x="480" y="18" width="424" height="224" rx="10" />
+            <text class="svg-sub" x="494" y="38">HOME LAN · ZERO INBOUND PORTS · OUTBOUND TLS ONLY</text>
+
+            <rect class="svg-box svg-box--ok" x="502" y="54" width="172" height="72" rx="8" />
+            <text class="svg-title" x="588" y="78" text-anchor="middle">ESP32 (ESP-IDF C)</text>
+            <text class="svg-sub" x="588" y="96" text-anchor="middle">2.4 GHz Wi-Fi · TLS 8883</text>
+            <text class="svg-sub" x="588" y="112" text-anchor="middle">drops retained cmds</text>
+
+            <rect class="svg-box" x="716" y="54" width="170" height="72" rx="8" />
+            <text class="svg-title" x="801" y="78" text-anchor="middle">Workstation Boot</text>
+            <text class="svg-sub" x="801" y="96" text-anchor="middle">Ethernet WoL packet</text>
+            <text class="svg-sub" x="801" y="112" text-anchor="middle">remote tools + lock screen</text>
+
+            <rect class="svg-box svg-box--accent" x="502" y="150" width="384" height="76" rx="8" />
+            <text class="svg-title" x="694" y="174" text-anchor="middle">Windows PC Agent (Python · Clean Session)</text>
+            <text class="svg-sub" x="694" y="192" text-anchor="middle">verifies HMAC + 120s id dedupe + ±60s clock window &gt; boot time</text>
+            <text class="svg-sub" x="694" y="209" text-anchor="middle">folder allowlist (no .. / symlinks) · argv list only (no shell)</text>
+
+            <path class="svg-line svg-line--accent" d="M 103 100 L 103 134" marker-end="url(#arr-e-a)" />
+            <path class="svg-line svg-line--amber" d="M 190 168 L 236 146" marker-end="url(#arr-e-o)" />
+            <path class="svg-line" d="M 190 64 L 236 96" marker-end="url(#arr-e)" />
+            <path class="svg-line svg-line--ok" d="M 434 106 L 500 92" marker-end="url(#arr-e-g)" />
+            <path class="svg-line svg-line--accent" d="M 434 152 L 500 184" marker-end="url(#arr-e-a)" />
+            <path class="svg-line svg-line--ok" d="M 674 90 L 714 90" marker-end="url(#arr-e-g)" />
+          </svg>
+        </div>
+      </figure>
+
+      <div class="case__grid">
+        <div class="case-card spot">
+          <div class="case-card__label">Problem &amp; Threat Model</div>
+          <p>
+            Waking a home workstation remotely and spawning autonomous coding sessions (<code>bypassPermissions</code>) is
+            <strong>remote code execution by design</strong>. The system had to work with zero home-router port forwarding, tolerate
+            a potentially compromised cloud MQTT broker, and fail closed at every boundary.
+          </p>
+        </div>
+
+        <div class="case-card spot">
+          <div class="case-card__label">Security &amp; Protocol Specs (On GitHub)</div>
+          <div class="adr-list">
+            <a class="adr-link" href="https://github.com/givewgun/esp32-wol/blob/main/docs/security.md" target="_blank" rel="noopener">
+              <b>THREAT</b><span>Fail-closed threat model: Access JWT + HMAC-SHA256 + replay guards</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/esp32-wol/blob/main/docs/mqtt-protocol.md" target="_blank" rel="noopener">
+              <b>PROTO</b><span>Topic schema, QoS 1 non-retained commands, LWT &amp; clean-session rules</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/esp32-wol/blob/main/docs/firmware.md" target="_blank" rel="noopener">
+              <b>ESP-IDF</b><span>Native C firmware on ESP-IDF v6.1 with TLS 8883 &amp; WoL broadcast</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/esp32-wol/blob/main/docs/superpowers/specs/2026-10-30-pc-dashboard-pentest.md" target="_blank" rel="noopener">
+              <b>PENTEST</b><span>Documented security pentest against the PC dashboard &amp; agent</span><em>↗</em>
+            </a>
+          </div>
+        </div>
+
+        <div class="case-card case-card--warn spot">
+          <div class="case-card__label">Rejected Alternatives</div>
+          <ul>
+            <li><strong>Trusting the MQTT broker as the auth boundary:</strong> Rejected — broker credentials live on phone + ESP32; privileged session commands require a separate <code>PC_CMD_SECRET</code> HMAC-SHA256 signature only the dashboard and PC share.</li>
+            <li><strong>Cloudflare Access edge-only check:</strong> Rejected — container also validates RS256 Access JWTs via Cloudflare JWKS on every <code>/api</code> route so direct container reachability still fails closed.</li>
+            <li><strong>Retained MQTT commands / persistent sessions:</strong> Rejected — would cause a stale <code>shutdown</code> sent while offline to immediately kill the PC on next wake.</li>
+          </ul>
+        </div>
+
+        <div class="case-card case-card--ok spot">
+          <div class="case-card__label">Defense-in-Depth Mitigations</div>
+          <ul>
+            <li><strong>Replay attacks:</strong> Every signed command carries a unique <code>id</code> (cached 120s) and timestamp <code>ts</code> checked within ±60s of PC clock and strictly after agent boot time.</li>
+            <li><strong>Spoofed status replies:</strong> PC replies are also HMAC-signed; the dashboard drops unsigned or tampered replies.</li>
+            <li><strong>Path traversal &amp; shell injection:</strong> Folder names must match a listed workspace subfolder (rejecting <code>..</code>, symlinks, junctions, hidden dirs) and spawn via argv lists with 4 KB payload caps.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- =================================================================== -->
+    <!-- 05. OCULORY                                                         -->
     <!-- =================================================================== -->
     <article class="case" id="oculory">
       <div class="case__head">
         <div>
           <div class="case__meta">
-            <span class="case__num">Case Study 03</span>
+            <span class="case__num">Case Study 05</span>
             <span class="case__pill">ARM64 · $0/mo Runtime</span>
             <span class="case__pill case__pill--ok">Observability · Zero-Trust Ingress</span>
           </div>
@@ -540,13 +838,13 @@
     </article>
 
     <!-- =================================================================== -->
-    <!-- 04. HORIZON                                                         -->
+    <!-- 06. HORIZON                                                         -->
     <!-- =================================================================== -->
     <article class="case" id="horizon">
       <div class="case__head">
         <div>
           <div class="case__meta">
-            <span class="case__num">Case Study 04</span>
+            <span class="case__num">Case Study 06</span>
             <span class="case__pill">6 Public ADRs</span>
             <span class="case__pill case__pill--ok">Resilient Proxy · Same-Origin</span>
           </div>
@@ -675,7 +973,7 @@
     </article>
 
     <!-- =================================================================== -->
-    <!-- 05. ENTERPRISE NDA SCOPE                                            -->
+    <!-- 07. ENTERPRISE NDA SCOPE                                            -->
     <!-- =================================================================== -->
     <section class="case" id="nda">
       <div class="nda-box spot">

@@ -123,7 +123,10 @@
         <p class="footer__note">Designed &amp; engineered by Gun with Claude and Gemini working <a href="#tandem">in tandem</a>. Plain HTML, CSS &amp; JS — no build step. Press <kbd>⌘K</kbd> to explore, or try the Konami code.</p>
         <p class="footer__credit">Earth imagery: NASA Blue Marble &amp; Black Marble (public domain). Drag the globe to spin it.</p>
       </div>
-      <div class="iss-radar" id="issRadar"></div>
+      <div class="footer__telemetry">
+        <div class="iss-radar" id="issRadar"></div>
+        <div class="nlt" id="nextLaunchTicker"></div>
+      </div>
     </div>
   </footer>
 
@@ -133,6 +136,7 @@
   <script src="assets/js/main.js"></script>
   <script src="assets/js/tandem-orbit.js"></script>
   <script src="assets/js/mission-ui.js"></script>
+  <script src="assets/js/launch-manifest.js" defer></script>
   <script type="module" src="assets/js/space-scene.js"></script>
 </body>
 </html>

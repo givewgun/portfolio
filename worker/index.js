@@ -4,6 +4,7 @@
  */
 import { handleArcaneImage } from "./arcane-image.js";
 import { handleArcaneText } from "./arcane-text.js";
+import { handleLaunches } from "./launches.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -13,6 +14,9 @@ export default {
     }
     if (url.pathname === "/api/arcane-text") {
       return handleArcaneText(request, env);
+    }
+    if (url.pathname === "/api/launches") {
+      return handleLaunches(request, env, ctx);
     }
     // Everything else is a static asset.
     return env.ASSETS.fetch(request);

@@ -89,10 +89,12 @@
     $("[data-footer-name]").textContent = `${D.meta.name} · ${D.meta.role}`;
 
     // Nav links from sectionOrder (sections flagged `nav: false` stay off the bar)
-    $("[data-nav]").innerHTML = D.sectionOrder
-      .filter((s) => s.nav !== false)
-      .map((s) => `<a href="#${s.id}">${esc(s.label)}</a>`)
-      .join("");
+    $("[data-nav]").innerHTML =
+      D.sectionOrder
+        .filter((s) => s.nav !== false)
+        .map((s) => `<a href="#${s.id}">${esc(s.label)}</a>`)
+        .join("") +
+      `<a class="nav__flight" href="launch.html">Flight</a>`;
 
     // Hero. Each word of the name gets a span so CSS can rise it in, staggered.
     $("[data-hero-location]").textContent = D.meta.location;
@@ -108,6 +110,7 @@
 
     const cta = [];
     cta.push(`<a class="btn btn--primary" href="#projects">Explore the work${icons.arrow}</a>`);
+    cta.push(`<a class="btn btn--flight" href="launch.html"><span class="btn__play" aria-hidden="true">▶</span>Watch Flight Profile</a>`);
     const li = D.contact.links.find((l) => l.icon === "linkedin");
     if (li) cta.push(`<a class="btn btn--ghost" href="${esc(li.url)}" target="_blank" rel="noopener">${icons.linkedin}LinkedIn</a>`);
     cta.push(`<button class="btn btn--ghost" id="resumeBtn" type="button">${icons.download}<span data-resume-label>Résumé (PDF)</span></button>`);
@@ -552,7 +555,7 @@
       if (el.dataset.orig === undefined) el.dataset.orig = el.textContent;
       el.textContent = pick(id, key) || el.dataset.orig;
     };
-    document.querySelectorAll("[data-nav] a").forEach((a) => {
+    document.querySelectorAll('[data-nav] a[href^="#"]').forEach((a) => {
       swap(a, "nav", a.getAttribute("href").slice(1));
     });
     document.querySelectorAll("#sections section[id]").forEach((sec) => {
@@ -710,14 +713,14 @@
       burger.setAttribute("aria-expanded", String(open));
     });
     links.addEventListener("click", (e) => {
-      if (e.target.tagName === "A") {
+      if (e.target.closest("a")) {
         links.classList.remove("is-open");
         burger.setAttribute("aria-expanded", "false");
       }
     });
 
-    // Scroll-spy
-    const navAnchors = [...links.querySelectorAll("a")];
+    // Scroll-spy (section anchors only; skip external page links like launch.html)
+    const navAnchors = [...links.querySelectorAll('a[href^="#"]')];
     const spy = new IntersectionObserver(
       (entries) => {
         entries.forEach((en) => {

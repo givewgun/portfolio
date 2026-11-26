@@ -389,6 +389,109 @@ const portfolioData = {
   ],
 
   /* ----------------------------------------------------------------------- */
+  /*  FLIGHT PROFILE  (launch.html — the career told as a rocket launch)     */
+  /*  `t` = mission elapsed time in seconds. Events render in `t` order and  */
+  /*  each gets an equal slice of the scroll. `vehicle: "booster"` events    */
+  /*  play in the booster-cam picture-in-picture after stage separation.     */
+  /*  `link` (optional) adds a button to the event card.                     */
+  /* ----------------------------------------------------------------------- */
+  flight: {
+    mission: "GK-1",
+    vehicle: "Career Launch Vehicle",
+    site: "LC-13 · Bangkok, Thailand",
+    events: [
+      {
+        t: 0, code: "LIFTOFF", title: "Chulalongkorn University",
+        sub: "B.Eng. Computer Engineering · 2016 – 2020",
+        body: "Liftoff from Bangkok. Data structures, algorithm design, distributed systems and cloud computing — graduated with a 3.65 GPA and a CNN that predicts Rama IV traffic speed from taxi GPS.",
+        stats: [{ v: "3.65", l: "GPA" }],
+      },
+      {
+        t: 14, code: "TOWER CLEAR", title: "Demeter ICT",
+        sub: "Back End Developer & Tester (Intern) · 2019",
+        body: "Cleared the tower: first production code — embedded JavaScript apps on Zendesk for support agents, Android testing and new backend functions for a sales site.",
+      },
+      {
+        t: 58, code: "MACH 1", title: "Agoda",
+        sub: "Associate Software Engineer · 2020",
+        body: "Supersonic. Production Scala, Kafka and Akka on the customer-communication platform (email, SMS, push) at one of Thailand's top tech companies.",
+      },
+      {
+        t: 74, code: "MAX-Q", title: "Agoda",
+        sub: "Software Engineer · 2021 – 2023",
+        body: "Peak pressure: data-intensive microservices, a Campaign Engine querying SQL and Hadoop, an HTML template engine for revenue campaigns, Spark retargeting and Kubernetes migration.",
+        stats: [{ v: "Kafka", l: "Akka · Spark" }],
+      },
+      {
+        t: 150, code: "MECO", title: "Bank of Thailand Scholarship",
+        sub: "Full-ride master's scholarship · Sep 2022",
+        body: "Main engine cut-off. Selected from applicants across Thailand for a fully funded master's in software engineering abroad.",
+      },
+      {
+        t: 154, code: "STAGE SEP", title: "Separation",
+        sub: "Agoda → Pittsburgh · Jun 2023",
+        body: "Stage one peels away and turns for home. It will be back — that's the point of a reusable booster.",
+      },
+      {
+        t: 162, code: "SES-1", title: "Carnegie Mellon University",
+        sub: "Master of Software Engineering · 2023 – 2024",
+        body: "Second engine start. Cloud computing, DevOps & security, software architecture and quality assurance — finished with a 4.11 GPA.",
+        stats: [{ v: "4.11", l: "CMU GPA" }],
+      },
+      {
+        t: 172, code: "BOOSTBACK", vehicle: "booster", title: "Booster · boostback burn",
+        sub: "Flip and head for Bangkok",
+        body: "The booster flips and burns back toward the launch site, carrying everything learned on the way up.",
+      },
+      {
+        t: 228, code: "FAIRING SEP", title: "Adrich, LLC",
+        sub: "Lead Software Engineer · 2024 · with CMU",
+        body: "Fairings off, payload exposed to real load. Re-architected an IoT backend from 20,000 to 5 million concurrent Smart Label devices: ADRs, an API gateway and queue layer, and on-device ECL compression that halved payloads.",
+        stats: [{ v: "5M", l: "devices" }, { v: "−50%", l: "payload" }],
+      },
+      {
+        t: 362, code: "ENTRY BURN", vehicle: "booster", title: "Booster · entry burn",
+        sub: "Re-entering the atmosphere",
+        body: "Three engines relight to slow the descent through the thickening air. Grid fins steer.",
+      },
+      {
+        t: 404, code: "LANDING BURN", vehicle: "booster", title: "Booster · landing burn",
+        sub: "One engine, final approach",
+        body: "A single engine brings it down onto the tower, metres per second at a time.",
+      },
+      {
+        t: 418, code: "CATCH", vehicle: "booster", title: "Home — Bank of Thailand",
+        sub: "Caught by the tower · Jan 2025",
+        body: "The booster is home. Back in Bangkok and back at the Bank of Thailand, ready to fly again.",
+      },
+      {
+        t: 512, code: "SECO", title: "Bank of Thailand",
+        sub: "Senior Software Architect · 2025 – present",
+        body: "Orbit. Designed the public Identity & Access Management service (iam.bot.or.th) on .NET 10 and Azure AD B2C, led the DevOps transformation, golden container images, ARB governance and zero-trust advisory.",
+        stats: [{ v: "2M+", l: "IAM users" }],
+      },
+      {
+        t: 566, code: "PAYLOAD DEPLOY", title: "tandem",
+        sub: "Open source · npm tandem-agents · Nov 2026",
+        body: "Primary payload away: Claude Code and Gemini flying as one team on the plans you already pay for. Zero API keys, zero runtime dependencies, and cross-model reviews that caught five real release bugs.",
+        link: { label: "See tandem", url: "index.html#tandem" },
+      },
+      {
+        t: 610, code: "RIDESHARE", title: "Rideshare deployment",
+        sub: "Legion · GunVest · Horizon · Oculory",
+        body: "Smaller payloads spring off the adapter: a leaderless multi-agent signal engine, an investment command center, a space & earth dashboard, and a zero-cost observability stack.",
+        link: { label: "All projects", url: "index.html#projects" },
+      },
+      {
+        t: 640, code: "NOMINAL ORBIT", title: "Mission success",
+        sub: "Next mission: yours?",
+        body: "All vehicles nominal. If you're building something ambitious — identity, cloud, distributed systems or AI tooling — let's talk.",
+        link: { label: "Open a channel", url: "index.html#contact" },
+      },
+    ],
+  },
+
+  /* ----------------------------------------------------------------------- */
   /*  SECTION ORDER & LABELS                                                 */
   /*  Reorder this array to reorder the page. Remove a line to hide a        */
   /*  section from both the nav and the page.                               */

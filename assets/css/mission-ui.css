@@ -592,3 +592,92 @@ html[data-theme="light"] .toast-pill {
     animation: none !important;
   }
 }
+
+/* ---- Footer Next-Launch Ticker (.nlt) ----------------------------------- */
+.nlt:empty {
+  display: none;
+}
+
+.nlt__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.32rem 0.48rem;
+  width: 100%;
+  padding: 0.62rem 0.9rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--bg-card) 74%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  color: var(--text);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.69rem;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.nlt__link:hover,
+.nlt__link:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
+.nlt__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--ok, #34d399);
+}
+
+.nlt__dot--off {
+  background: var(--text-dim);
+}
+
+.nlt__tag {
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.nlt__sep {
+  color: var(--text-dim);
+  opacity: 0.55;
+}
+
+.nlt__mission {
+  color: var(--text);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 24ch;
+}
+
+.nlt__rocket {
+  color: var(--text-dim);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18ch;
+}
+
+.nlt__cd {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nlt__link {
+    transition: none !important;
+  }
+}

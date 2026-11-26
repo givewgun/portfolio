@@ -1034,3 +1034,43 @@ html.og .nav, html.og .hero__cta, html.og .hero__scroll, html.og .theme-hint, ht
 html.og .hero { min-height: 630px; height: 630px; padding: 0 72px; }
 html.og .hero__inner { max-width: none; }
 html.og .hero__hud { display: none; }
+
+/* Flight Profile CTA, Nav Link & Footer Telemetry Stack (additive) */
+.btn--flight {
+  background: color-mix(in srgb, var(--accent-soft) 95%, var(--glass));
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--border));
+  color: var(--text);
+}
+.btn--flight:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -16px var(--accent);
+}
+.btn--flight .btn__play {
+  font-size: 0.72em;
+  line-height: 1;
+  color: var(--accent);
+}
+.nav__links a.nav__flight {
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+}
+.nav__links a.nav__flight:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+@media (max-width: 920px) {
+  .nav__links a.nav__flight {
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+  }
+}
+.footer__telemetry {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+}

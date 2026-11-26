@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Flight Profile · Mission GK-1 — Gun Kaewngarm</title>
+  <meta name="description" content="Gun Kaewngarm's career, flown as a rocket launch: liftoff at Chulalongkorn, Max-Q at Agoda, second stage at Carnegie Mellon, booster caught at home and orbit at the Bank of Thailand. Plus a live manifest of real upcoming launches." />
+  <meta name="theme-color" content="#03050a" />
+  <meta name="color-scheme" content="dark" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Flight Profile · Mission GK-1" />
+  <meta property="og:description" content="A career flown as a rocket launch — with live telemetry, a booster catch and a manifest of real upcoming launches." />
+  <meta property="og:url" content="https://givewgun.com/launch.html" />
+  <meta property="og:image" content="https://givewgun.com/assets/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="canonical" href="https://givewgun.com/launch.html" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="modulepreload" href="assets/vendor/three.module.min.js" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/launch.css" />
+  <link rel="stylesheet" href="assets/css/launch-manifest.css" />
+</head>
+<body class="is-countdown">
+  <a href="#log" class="skip">Skip to the mission log</a>
+
+  <!-- WebGL flight scene (launch-flight.js). Decorative: the mission log below has every event as text. -->
+  <canvas class="fx" id="flightCanvas" aria-hidden="true"></canvas>
+  <div class="fx-flash" id="fxFlash" aria-hidden="true"></div>
+  <div class="fx-vignette" aria-hidden="true"></div>
+
+  <!-- ===== Top bar ===== -->
+  <header class="bar">
+    <a class="bar__home" href="index.html" aria-label="Back to givewgun.com">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <span>GIVEWGUN.COM</span>
+    </a>
+    <div class="bar__title">
+      <span class="bar__live"><i></i>LIVE</span>
+      <span>FLIGHT PROFILE</span>
+      <span class="bar__sep">/</span>
+      <span data-mission>MISSION GK-1</span>
+    </div>
+    <div class="bar__actions">
+      <div class="cams" role="group" aria-label="Camera">
+        <button type="button" data-cam="0" aria-pressed="true" title="Chase camera (1)">1<span>CHASE</span></button>
+        <button type="button" data-cam="1" aria-pressed="false" title="Pad camera (2)">2<span>PAD</span></button>
+        <button type="button" data-cam="2" aria-pressed="false" title="Onboard camera (3)">3<span>ONBOARD</span></button>
+        <button type="button" data-cam="3" aria-pressed="false" title="Tracking camera (4)">4<span>TRACK</span></button>
+      </div>
+      <button type="button" class="pill" id="autoBtn" aria-pressed="false" title="Auto-fly (A)">AUTO</button>
+      <button type="button" class="pill" id="soundBtn" aria-pressed="false" title="Sound (M)">SOUND</button>
+      <a class="pill pill--solid" href="#manifest">MANIFEST</a>
+    </div>
+  </header>
+
+  <!-- ===== Webcast HUD ===== -->
+  <div class="hud" id="hud" aria-hidden="true">
+    <!-- event card -->
+    <aside class="card" id="eventCard">
+      <p class="card__kicker"><span data-card-time>T+00:00:00</span><b data-card-code>LIFTOFF</b></p>
+      <h2 class="card__title" data-card-title></h2>
+      <p class="card__sub" data-card-sub></p>
+      <p class="card__body" data-card-body></p>
+      <div class="card__stats" data-card-stats></div>
+      <a class="card__link" data-card-link hidden></a>
+    </aside>
+
+    <!-- real-world next launch -->
+    <div class="realnext" id="realNext" hidden>
+      <span>NEXT REAL LAUNCH</span>
+      <b data-rn-name></b>
+      <em data-rn-clock>T-00:00:00:00</em>
+    </div>
+
+    <!-- picture-in-picture booster cam frame -->
+    <div class="pip" id="pip">
+      <div class="pip__label"><i></i>BOOSTER CAM <span data-pip-state>BOOSTBACK</span></div>
+    </div>
+
+    <!-- bottom telemetry strip -->
+    <div class="tele">
+      <section class="stage stage--1">
+        <header>STAGE 1 <span data-s1-state>STANDBY</span></header>
+        <div class="gauges">
+          <div class="gauge" data-g="s1v"><svg viewBox="0 0 100 100"><circle class="gauge__track" cx="50" cy="50" r="44"/><circle class="gauge__fill" cx="50" cy="50" r="44"/></svg><b>0</b><span>SPEED<br>KM/H</span></div>
+          <div class="gauge" data-g="s1h"><svg viewBox="0 0 100 100"><circle class="gauge__track" cx="50" cy="50" r="44"/><circle class="gauge__fill" cx="50" cy="50" r="44"/></svg><b>0</b><span>ALTITUDE<br>KM</span></div>
+        </div>
+        <div class="engines" data-engines="1">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </section>
+
+      <section class="clock">
+        <svg class="arc" id="arc" viewBox="0 0 800 140" preserveAspectRatio="xMidYMax meet"></svg>
+        <div class="clock__time"><span data-clock-sign>T-</span><b data-clock>00:00:10</b></div>
+        <div class="clock__meta">
+          <span>MACH <b data-mach>0.0</b></span>
+          <span>Q <b data-q>0.0</b> KPA</span>
+          <span>THR <b data-thr>0</b>%</span>
+          <span>DOWNRANGE <b data-dr>0</b> KM</span>
+        </div>
+      </section>
+
+      <section class="stage stage--2">
+        <header>STAGE 2 <span data-s2-state>STANDBY</span></header>
+        <div class="gauges">
+          <div class="gauge" data-g="s2v"><svg viewBox="0 0 100 100"><circle class="gauge__track" cx="50" cy="50" r="44"/><circle class="gauge__fill" cx="50" cy="50" r="44"/></svg><b>0</b><span>SPEED<br>KM/H</span></div>
+          <div class="gauge" data-g="s2h"><svg viewBox="0 0 100 100"><circle class="gauge__track" cx="50" cy="50" r="44"/><circle class="gauge__fill" cx="50" cy="50" r="44"/></svg><b>0</b><span>ALTITUDE<br>KM</span></div>
+        </div>
+        <div class="engines engines--one" data-engines="2"><i></i></div>
+      </section>
+    </div>
+
+    <p class="hint" id="scrollHint"><span>SCROLL TO FLY</span> · or press <kbd>A</kbd> for auto-fly</p>
+  </div>
+
+  <!-- ===== Countdown ===== -->
+  <div class="countdown" id="countdown" role="dialog" aria-label="Launch countdown">
+    <div class="countdown__inner">
+      <p class="countdown__kicker">MISSION GK-1 · <span data-site>LC-13 · BANGKOK</span></p>
+      <p class="countdown__clock">T-<b id="cdClock">00:00:10</b></p>
+      <ol class="poll" id="poll"></ol>
+      <div class="countdown__actions">
+        <button type="button" class="ignite" id="igniteBtn">IGNITE NOW <span aria-hidden="true">▸</span></button>
+        <button type="button" class="pill" id="skipToLog">SKIP TO TEXT LOG</button>
+      </div>
+      <p class="countdown__note">A career, flown as a launch. Original vehicle; telemetry is illustrative.</p>
+    </div>
+  </div>
+
+  <!-- ===== Scroll track: drives mission elapsed time ===== -->
+  <main id="main">
+    <div class="track" id="track" aria-hidden="true"></div>
+
+    <section class="log" id="log" aria-labelledby="logTitle">
+      <div class="wrap">
+        <p class="kicker">POST-FLIGHT REPORT</p>
+        <h2 id="logTitle">Mission log</h2>
+        <p class="lede">Every event of the flight, as text. Each one is a real chapter of the career.</p>
+        <ol class="log__list" id="logList"></ol>
+        <div class="log__actions">
+          <button type="button" class="pill pill--solid" id="refly">↺ RE-FLY MISSION</button>
+          <a class="pill" href="index.html">← BACK TO PORTFOLIO</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="manifest" class="manifest" aria-labelledby="manifestTitle">
+      <div class="wrap">
+        <div class="manifest__head">
+          <p class="kicker">REAL WORLD · LIVE</p>
+          <h2 id="manifestTitle">Launch manifest</h2>
+          <p class="lede">The next real rockets leaving Earth, with live countdowns. SpaceX flights are marked.</p>
+        </div>
+        <div id="launchManifest"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <span>© Gun Kaewngarm · Built with Claude + Gemini in <a href="index.html#tandem">tandem</a></span>
+      <span>Earth: NASA Blue Marble &amp; Black Marble (public domain). Vehicle and telemetry are original and illustrative — not affiliated with any launch provider.</span>
+    </div>
+  </footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/launch-manifest.js" defer></script>
+  <script type="module" src="assets/js/launch-flight.js"></script>
+</body>
+</html>

@@ -325,3 +325,20 @@ main { position: relative; z-index: 5; }
   .bar__live i, .hint span { animation: none; }
   .card, .poll li, .countdown, .pip { transition: none; }
 }
+
+/* Mission-log actions */
+.log__acts { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-top: 10px; }
+.log__acts a { margin-top: 0 !important; }
+.log__fly {
+  cursor: pointer; background: transparent; border: 1px solid var(--line-strong); border-radius: 3px;
+  padding: 6px 10px; font: 500 10px var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: #fff;
+  transition: background 0.2s, color 0.2s;
+}
+.log__fly:hover, .log__fly:focus-visible { background: #fff; color: #000; }
+.log__list li.is-booster .log__fly { border-color: rgba(255, 106, 43, 0.6); }
+
+/* ?og — chrome-free still for the social card */
+html.og .bar, html.og .countdown, html.og .hint, html.og .realnext, html.og .card__link, html.og .skip { display: none !important; }
+html.og body.is-countdown .hud { opacity: 1; visibility: visible; }
+html.og { scrollbar-width: none; }
+html.og::-webkit-scrollbar { display: none; }

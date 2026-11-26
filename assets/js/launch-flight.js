@@ -201,7 +201,15 @@ const arcDots = [];
     const s = document.createElement("p"); s.className = "log__sub"; s.textContent = ev.sub || "";
     const p = document.createElement("p"); p.textContent = ev.body || "";
     b.append(h, s, p);
-    if (ev.link) { const a = document.createElement("a"); a.href = ev.link.url; a.textContent = ev.link.label + " →"; b.append(a); }
+    const acts = document.createElement("div"); acts.className = "log__acts";
+    const fly = document.createElement("button");
+    fly.type = "button"; fly.className = "log__fly"; fly.dataset.fly = String(EVENTS.indexOf(ev));
+    fly.textContent = "▶ Watch T+" + fmtClock(ev.t);
+    fly.setAttribute("aria-label", `Watch ${ev.code}: ${ev.title} in the flight`);
+    acts.append(fly);
+    if (ev.link) { const a = document.createElement("a"); a.href = ev.link.url; a.textContent = ev.link.label + " →"; acts.append(a); }
+    b.append(acts);
+    li.id = "ev-" + (ev.code || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
     li.append(t, c, b);
     list.append(li);
   });
@@ -386,7 +394,26 @@ $("#refly").addEventListener("click", () => {
 });
 
 const hashTarget = () => (location.hash ? document.getElementById(location.hash.slice(1)) : null);
-if (REDUCE || /^#(log|manifest)$/.test(location.hash)) skipCountdown(hashTarget());
+
+/* Deep links: launch.html?at=max-q jumps straight to that moment of the
+   flight (slug of the event code). ?og renders a chrome-free still for the
+   social card. */
+const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const PARAMS = new URLSearchParams(location.search);
+if (PARAMS.has("og")) document.documentElement.classList.add("og");
+function flyTo(i, smooth = false) {
+  if (i < 0 || i >= EVENTS.length) return;
+  skipCountdown(null);
+  setAuto(false);
+  const seg = i < EVENTS.length - 1 ? EV_P[i + 1] - EV_P[i] : 1 - EV_P[i];
+  const p = EV_P[i] + seg * 0.35;
+  requestAnimationFrame(() => window.scrollTo({ top: p * trackLen(), behavior: smooth && !REDUCE ? "smooth" : "auto" }));
+}
+const AT = slug(PARAMS.get("at") || "");
+const atIdx = AT ? EVENTS.findIndex((e) => slug(e.code) === AT) : -1;
+if (atIdx >= 0) flyTo(atIdx);
+else if (REDUCE || /^#(log|manifest)$/.test(location.hash)) skipCountdown(hashTarget());
+document.querySelectorAll("[data-fly]").forEach((b) => b.addEventListener("click", () => flyTo(+b.dataset.fly, true)));
 addEventListener("hashchange", () => { if (ctl.phase === "countdown" && hashTarget()) skipCountdown(hashTarget()); });
 
 // Any manual scroll input cancels auto-fly.

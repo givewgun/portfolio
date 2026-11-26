@@ -1,10 +1,12 @@
 # Gun Kaewngarm — Portfolio
 
 A "Deep Space" portfolio: a real-time WebGL cosmos (sun-synced planet, warp
-drive), a live tandem launch spotlight, a ⌘K command palette and a live ISS
-ground-track radar. Still no build step and no framework — HTML, CSS and
-vanilla JS, with Three.js vendored locally. **All content lives in one file**,
-so updating it is quick and safe.
+drive), an interactive **Flight Profile** page (`launch.html`) that flies the
+career as a two-stage rocket launch with a live upcoming-launches manifest, a
+live tandem launch spotlight, a ⌘K command palette and a live ISS ground-track
+radar. Still no build step and no framework — HTML, CSS and vanilla JS, with
+Three.js vendored locally. **All content lives in one file**, so updating it is
+quick and safe.
 
 Designed and built by Claude (lead: design system, layout, tandem spotlight,
 integration) and Gemini (WebGL scene, command palette, ISS radar) working as
@@ -67,19 +69,25 @@ Cloudflare DNS add a `CNAME` record for `givewgun.com` → `<user>.github.io`
 ## Structure
 
 ```
-index.html                    # markup shell (mostly empty placeholders)
-assets/css/styles.css         # design system, layout, every section, theme tokens
-assets/css/space-scene.css    # WebGL stage
-assets/css/mission-ui.css     # command palette, toasts, ISS radar
-assets/js/data.js             # ← YOUR CONTENT lives here
-assets/js/main.js             # renders data.js; scroll/counter/card effects
-assets/js/space-scene.js      # WebGL cosmos (ES module) + 2D fallback + warp
-assets/js/tandem-orbit.js     # binary-star visual in the launch spotlight
-assets/js/mission-ui.js       # ⌘K palette, easter eggs, ISS ground-track radar
-assets/js/resume.js           # generates the résumé PDF on the fly from data.js
-assets/js/arcane.js           # AI-generated background for the opt-in Arcane theme
+index.html                         # markup shell (mostly empty placeholders)
+launch.html                        # Flight Profile (career launch + live manifest)
+assets/css/styles.css              # design system, layout, every section, theme tokens
+assets/css/space-scene.css         # WebGL stage
+assets/css/mission-ui.css          # command palette, toasts, ISS radar
+assets/css/launch.css              # Flight Profile HUD, countdown, mission log
+assets/css/launch-manifest.css     # live launch manifest cards & footer ticker
+assets/js/data.js                  # ← YOUR CONTENT lives here
+assets/js/main.js                  # renders data.js; scroll/counter/card effects
+assets/js/space-scene.js           # WebGL cosmos (ES module) + 2D fallback + warp
+assets/js/tandem-orbit.js          # binary-star visual in the launch spotlight
+assets/js/mission-ui.js            # ⌘K palette, easter eggs, ISS ground-track radar
+assets/js/launch-flight.js         # WebGL rocket launch, telemetry HUD, booster PiP
+assets/js/launch-manifest.js       # live upcoming launches & footer next-launch ticker
+assets/js/resume.js                # generates the résumé PDF on the fly from data.js
+assets/js/arcane.js                # AI-generated background for the opt-in Arcane theme
 assets/vendor/three.module.min.js  # Three.js r170, self-hosted (no CDN)
-CNAME                         # custom domain for GitHub Pages
+worker/launches.js                 # /api/launches edge-cached Launch Library 2 proxy
+CNAME                              # custom domain for GitHub Pages
 ```
 
 ## Space features
@@ -100,6 +108,39 @@ CNAME                         # custom domain for GitHub Pages
   command, download the résumé, switch theme.
 - **ISS radar** (footer): live position from `api.wheretheiss.at`, ground
   track and distance to Bangkok; polls only while visible.
+
+## Flight Profile (`launch.html`)
+
+An interactive WebGL launch webcast that tells the career as a two-stage orbital
+flight — liftoff, Max-Q, stage separation, booster return and tower catch,
+second-stage orbit and payload deploy — followed by a full text mission log and
+a live manifest of real upcoming rocket launches.
+
+- **Controls**: scroll to scrub mission elapsed time (forward or backward),
+  press **`A`** to toggle auto-fly, **`1`–`4`** to switch cameras (Chase, Pad,
+  Onboard, Track), and **`M`** to toggle synthesised launch audio (off by
+  default). During the opening countdown, click **IGNITE NOW** to jump straight
+  to ignition or **SKIP TO TEXT LOG** to jump directly to the text report.
+- **Deep links**: `launch.html?at=<event-slug>` skips the countdown and jumps
+  straight to that chapter (slug of the event `code`, e.g. `?at=max-q`,
+  `?at=ses-1`, `?at=seco`). Experience and Education cards on `index.html` link
+  directly to their matching chapters.
+- **Editing events**: edit `portfolioData.flight` in
+  [`assets/js/data.js`](assets/js/data.js). Each event sets `t` (mission elapsed
+  time in seconds); events render in `t` order and each gets an equal slice of
+  the scroll track. Events with `vehicle: "booster"` play in the booster-cam
+  picture-in-picture after stage separation; an optional `link` (`{ label, url }`)
+  adds an action button to the event card.
+- **Live launch manifest**: `/api/launches` (`worker/launches.js`) proxies
+  [The Space Devs Launch Library 2](https://thespacedevs.com) with a 15-minute
+  Cloudflare edge cache and stale fallback. When the Worker isn't present (e.g.
+  local static hosting), `launch-manifest.js` falls back directly to Launch
+  Library 2 with a 20-minute `localStorage` cache.
+- **Footer next-launch ticker**: `index.html` displays the next real upcoming
+  launch with a live countdown in the footer alongside the ISS radar, backed by
+  the same manifest feed.
+- **Still mode (`?og`)**: `launch.html?og` renders a chrome-free still frame
+  for social-card screenshots (combinable with `?at=<event-slug>`).
 
 ## Social preview
 

@@ -76,6 +76,41 @@
     String(s).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
   const link = (l) => (l.url ? `<a class="btn btn--ghost" href="${esc(l.url)}" target="_blank" rel="noopener">${icons[l.icon] || ""}${esc(l.label)}</a>` : "");
 
+  /* ---- Flight Profile chapter links (launch.html?at=<slug>) --------------- */
+  const flightEvents = (D.flight && Array.isArray(D.flight.events) ? D.flight.events : [])
+    .filter((ev) => ev && ev.vehicle !== "booster" && ev.code);
+  const flightSlug = (code) =>
+    String(code).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  function formatMET(t) {
+    const s = Math.max(0, Math.floor(Number(t) || 0));
+    const mm = String(Math.floor(s / 60)).padStart(2, "0");
+    const ss = String(s % 60).padStart(2, "0");
+    return `T+${mm}:${ss}`;
+  }
+  function matchExperienceEvent(e) {
+    if (!flightEvents.length || !e || !e.company) return null;
+    const byCompany = flightEvents.filter((ev) => ev.title === e.company);
+    if (!byCompany.length) return null;
+    const role = String(e.role || "").trim().toLowerCase();
+    if (role) {
+      const hit = byCompany.find((ev) => String(ev.sub || "").toLowerCase().startsWith(role));
+      if (hit) return hit;
+    }
+    return byCompany.length === 1 ? byCompany[0] : null;
+  }
+  function matchEducationEvent(e) {
+    if (!flightEvents.length || !e || !e.school) return null;
+    return flightEvents.find((ev) => ev.title === e.school) || null;
+  }
+  function flightChip(ev) {
+    if (!ev) return "";
+    const slug = flightSlug(ev.code);
+    if (!slug) return "";
+    const label = `${formatMET(ev.t)} · ${ev.code}`;
+    const aria = `Watch this chapter in the Flight Profile — ${ev.title || ev.code}`;
+    return `<a class="flight-chip" href="launch.html?at=${esc(slug)}" aria-label="${esc(aria)}"><span class="flight-chip__play" aria-hidden="true">▶</span>${esc(label)}</a>`;
+  }
+
   /* ======================================================================== */
   /*  HEADER / HERO / NAV                                                     */
   /* ======================================================================== */
@@ -269,6 +304,7 @@
           const period = `${esc(e.start)} — ${esc(e.end)}`;
           const badge = e.current ? '<span class="tl-badge">Current</span>' : "";
           const note = e.note ? ` · ${esc(e.note)}` : "";
+          const chip = flightChip(matchExperienceEvent(e));
           const bullets = (e.bullets || []).map((b) => `<li>${esc(b)}</li>`).join("");
           const tags = (e.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("");
           return `<div class="tl-item ${e.current ? "tl-item--current" : ""} reveal">
@@ -281,7 +317,10 @@
                     <div class="tl-company">${esc(e.company)}</div>
                   </div>
                 </div>
-                <span class="tl-period">${period}</span>
+                <div class="tl-aside">
+                  <span class="tl-period">${period}</span>
+                  ${chip}
+                </div>
               </div>
               <div class="tl-meta">${esc(e.location || "")}${note}</div>
               <ul class="tl-bullets">${bullets}</ul>
@@ -349,7 +388,9 @@
 
     education() {
       const cards = D.education
-        .map((e) => `<div class="info-card spot reveal">
+        .map((e) => {
+          const chip = flightChip(matchEducationEvent(e));
+          return `<div class="info-card spot reveal">
           <div class="info-card__head">
             ${orgLogo(e.logo, e.school)}
             <div>
@@ -357,9 +398,10 @@
               <div class="info-card__sub">${esc(e.degree)}</div>
             </div>
           </div>
-          <div class="info-card__meta">${esc(e.period)}${e.location ? " · " + esc(e.location) : ""}</div>
+          <div class="info-card__meta${chip ? " info-card__meta--flight" : ""}"><span>${esc(e.period)}${e.location ? " · " + esc(e.location) : ""}</span>${chip}</div>
           ${e.detail ? `<div class="info-card__detail">${esc(e.detail)}</div>` : ""}
-        </div>`)
+        </div>`;
+        })
         .join("");
       return sectionShell("education", "Training", "Education", `<div class="card-grid">${cards}</div>`);
     },

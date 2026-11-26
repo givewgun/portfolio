@@ -21,6 +21,11 @@
     wand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2M15 10V8M8.5 6.5 7 5M22 6.5 20.5 5M9 22l9-9-2-2-9 9zM15 6l1.5 1.5"/><path d="M11 9 4 16"/></svg>',
     star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.784 1.401 8.169L12 18.896l-7.335 3.868 1.401-8.169L.132 9.211l8.2-1.193z"/></svg>',
     fork: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9M12 15v0"/></svg>',
+    package: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></svg>',
+    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
     repo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
   };
 
@@ -83,23 +88,54 @@
     $("[data-name]").textContent = D.meta.name;
     $("[data-footer-name]").textContent = `${D.meta.name} · ${D.meta.role}`;
 
-    // Nav links from sectionOrder
+    // Nav links from sectionOrder (sections flagged `nav: false` stay off the bar)
     $("[data-nav]").innerHTML = D.sectionOrder
+      .filter((s) => s.nav !== false)
       .map((s) => `<a href="#${s.id}">${esc(s.label)}</a>`)
       .join("");
 
-    // Hero
+    // Hero. The <h1> carries the plain name as its accessible label; each
+    // word gets a span so CSS can rise it in, staggered.
     $("[data-hero-location]").textContent = D.meta.location;
-    $("[data-hero-name]").textContent = D.meta.name;
+    const nameEl = $("[data-hero-name]");
+    nameEl.setAttribute("aria-label", D.meta.name);
+    nameEl.innerHTML = D.meta.name
+      .split(/\s+/)
+      .map((w, i) => `<span class="hero__word" aria-hidden="true"><span style="--i:${i}">${esc(w)}</span></span>`)
+      .join(" ");
     $("[data-hero-role]").textContent = D.meta.role;
-    $("[data-hero-headline]").textContent = D.meta.headline;
+    const creds = (D.meta.creds || []).map((c) => `<span>${esc(c)}</span>`).join("");
+    $("[data-hero-headline]").innerHTML =
+      `${esc(D.meta.tagline || D.meta.headline)}` + (creds ? `<span class="hero__creds">${creds}</span>` : "");
 
     const cta = [];
+    cta.push(`<a class="btn btn--primary" href="#projects">Explore the work${icons.arrow}</a>`);
     const li = D.contact.links.find((l) => l.icon === "linkedin");
-    if (li) cta.push(`<a class="btn btn--primary" href="${esc(li.url)}" target="_blank" rel="noopener">${icons.linkedin}View LinkedIn</a>`);
-    cta.push(`<a class="btn btn--ghost" href="#contact">${icons.mail}Get in touch</a>`);
+    if (li) cta.push(`<a class="btn btn--ghost" href="${esc(li.url)}" target="_blank" rel="noopener">${icons.linkedin}LinkedIn</a>`);
     cta.push(`<button class="btn btn--ghost" id="resumeBtn" type="button">${icons.download}<span data-resume-label>Résumé (PDF)</span></button>`);
     $("[data-hero-cta]").innerHTML = cta.join("");
+
+    // "New launch" pill → the tandem spotlight
+    const L = D.launch;
+    const pill = $("[data-hero-launch]");
+    if (L && pill && D.sectionOrder.some((s) => s.id === "tandem")) {
+      pill.hidden = false;
+      pill.innerHTML = `<span class="hero__launch-tag">New launch</span><span class="hero__launch-text"><strong>${esc(L.name)}</strong> <span data-tandem-version>${L.version ? "v" + esc(L.version) : ""}</span> · Claude Code + Gemini as one team</span>${icons.arrow}`;
+    }
+
+    // Telemetry HUD (decorative; aria-hidden in the markup, so the ticking
+    // clock never spams screen readers)
+    const c = D.meta.coords;
+    const hud = $("[data-hero-hud]");
+    if (hud && c) {
+      const lat = `${Math.abs(c.lat).toFixed(4)}° ${c.lat >= 0 ? "N" : "S"}`;
+      const lon = `${Math.abs(c.lon).toFixed(4)}° ${c.lon >= 0 ? "E" : "W"}`;
+      hud.innerHTML = `
+        <div class="hud__row"><span>POS</span><b>${lat} · ${lon}</b></div>
+        <div class="hud__row"><span>LOCAL</span><b data-hud-local>--:--:--</b><i>${esc(c.tzLabel || "")}</i></div>
+        <div class="hud__row"><span>UTC</span><b data-hud-utc>--:--:--</b></div>
+        <div class="hud__row hud__row--ok"><span>STATUS</span><b>ALL SYSTEMS NOMINAL</b></div>`;
+    }
 
     // Footer social links
     $("[data-footer-links]").innerHTML = D.contact.links
@@ -107,13 +143,43 @@
       .join("");
   }
 
+  function initClock() {
+    const local = $("[data-hud-local]");
+    const utc = $("[data-hud-utc]");
+    if (!local || !utc) return;
+    const opts = { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false };
+    let fmtLocal;
+    try {
+      fmtLocal = new Intl.DateTimeFormat("en-GB", { ...opts, timeZone: (D.meta.coords && D.meta.coords.tz) || undefined });
+    } catch (e) {
+      fmtLocal = new Intl.DateTimeFormat("en-GB", opts);
+    }
+    const fmtUtc = new Intl.DateTimeFormat("en-GB", { ...opts, timeZone: "UTC" });
+    const tick = () => {
+      if (document.hidden) return;
+      const now = new Date();
+      local.textContent = fmtLocal.format(now);
+      utc.textContent = fmtUtc.format(now);
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
+
   /* ======================================================================== */
   /*  SECTION BUILDERS                                                        */
   /* ======================================================================== */
+  // Telemetry index ("01", "02", …) from the section's position in
+  // sectionOrder. Rendered via CSS attr() so the Arcane label swap, which
+  // rewrites the kicker's textContent, never clobbers it.
+  const sectionIndex = (id) => {
+    const i = D.sectionOrder.findIndex((s) => s.id === id);
+    return i < 0 ? "" : String(i + 1).padStart(2, "0");
+  };
+
   function sectionShell(id, kicker, title, inner, extraClass = "") {
     return `<section class="section ${extraClass}" id="${id}">
       <div class="section__head reveal">
-        <div class="section__kicker">${esc(kicker)}</div>
+        <div class="section__kicker" data-index="${sectionIndex(id)}">${esc(kicker)}</div>
         <h2 class="section__title">${esc(title)}</h2>
       </div>
       ${inner}
@@ -123,7 +189,7 @@
   const builders = {
     about() {
       const stats = D.about.highlights
-        .map((h) => `<div class="stat"><div class="stat__value">${esc(h.value)}</div><div class="stat__label">${esc(h.label)}</div></div>`)
+        .map((h) => `<div class="stat spot"><div class="stat__value" data-count="${esc(h.value)}">${esc(h.value)}</div><div class="stat__label">${esc(h.label)}</div></div>`)
         .join("");
       const text = D.about.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("");
       const inner = `<div class="about__grid reveal">
@@ -131,7 +197,69 @@
         <div class="about__stats">${stats}</div>
       </div>
       <p class="arcane-ai-note" hidden></p>`;
-      return sectionShell("about", "Who I am", "About", inner);
+      return sectionShell("about", "Mission brief", "About", inner);
+    },
+
+    // Latest-launch spotlight (tandem). Live numbers are filled in later by
+    // loadTandemStats(); the binary-star visual is drawn by tandem-orbit.js.
+    tandem() {
+      const L = D.launch;
+      if (!L) return "";
+      const points = (L.points || [])
+        .map((p) => `<li class="launch__point"><b>${esc(p.value)}</b><span>${esc(p.label)}</span></li>`)
+        .join("");
+      const links = (L.links || [])
+        .map((l, i) => `<a class="btn ${i === 0 ? "btn--primary" : "btn--ghost"}" href="${esc(l.url)}" target="_blank" rel="noopener">${icons[l.icon] || ""}${esc(l.label)}</a>`)
+        .join("");
+      const coverage = (L.coverage || [])
+        .map((c) => (c.url
+          ? `<a class="launch__chip" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.label)}${icons.external}</a>`
+          : `<span class="launch__chip">${esc(c.label)}</span>`))
+        .join("");
+      const inner = `<div class="launch">
+        <div class="launch__grid">
+          <div class="launch__copy reveal">
+            <div class="launch__name">
+              <span class="launch__mark" aria-hidden="true"><i></i><i></i></span>
+              <span class="launch__word">${esc(L.name)}</span>
+              <span class="launch__ver" data-tandem-version>${L.version ? "v" + esc(L.version) : ""}</span>
+              <span class="launch__badge">Open source · MIT</span>
+            </div>
+            <p class="launch__pitch">${esc(L.pitch)}</p>
+            <ul class="launch__points">${points}</ul>
+            <div class="launch__install">
+              <code><span aria-hidden="true">$</span> ${esc(L.install)}</code>
+              <button class="launch__copybtn" type="button" data-copy="${esc(L.install)}" aria-label="Copy install command">${icons.copy}<span>Copy</span></button>
+            </div>
+            <div class="launch__links">${links}</div>
+          </div>
+          <div class="launch__visual reveal" aria-hidden="true">
+            <div class="orbit" id="tandemOrbit">
+              <canvas class="orbit__canvas"></canvas>
+              <div class="orbit__legend">
+                <span class="orbit__key orbit__key--claude"><i></i>Claude · leads &amp; critiques</span>
+                <span class="orbit__key orbit__key--gemini"><i></i>Gemini · reads, researches, builds</span>
+              </div>
+              <ol class="orbit__log" data-orbit-log></ol>
+            </div>
+          </div>
+        </div>
+        <div class="launch__telemetry reveal">
+          <div class="launch__metric"><b data-tandem-stars>—</b><span>GitHub stars</span></div>
+          <div class="launch__metric"><b data-tandem-dl>—</b><span>npm downloads / month</span></div>
+          <div class="launch__metric"><b data-tandem-forks>—</b><span>forks</span></div>
+          <div class="launch__metric"><b>0</b><span>runtime dependencies</span></div>
+        </div>
+        ${L.image ? `<figure class="launch__shot reveal">
+          <div class="launch__frame"><span></span><span></span><span></span><em>127.0.0.1:4777 — tandem dashboard</em></div>
+          <a href="${esc(L.image)}" target="_blank" rel="noopener"><img src="${esc(L.image)}" alt="${esc(L.imageAlt || "")}" loading="lazy" decoding="async" width="1600" height="1000"></a>
+        </figure>` : ""}
+        <div class="launch__foot reveal">
+          <div class="launch__coverage">${coverage}</div>
+          ${L.meta ? `<p class="launch__meta">${esc(L.meta)}</p>` : ""}
+        </div>
+      </div>`;
+      return sectionShell("tandem", `Latest launch · ${L.when || ""}`, L.title, inner, "section--launch");
     },
 
     experience() {
@@ -143,7 +271,7 @@
           const bullets = (e.bullets || []).map((b) => `<li>${esc(b)}</li>`).join("");
           const tags = (e.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("");
           return `<div class="tl-item ${e.current ? "tl-item--current" : ""} reveal">
-            <div class="tl-card">
+            <div class="tl-card spot">
               <div class="tl-top">
                 <div class="tl-head">
                   ${orgLogo(e.logo, e.company)}
@@ -161,37 +289,40 @@
           </div>`;
         })
         .join("");
-      return sectionShell("experience", "Where I've worked", "Experience", `<div class="timeline">${items}</div>`);
+      const track = '<div class="timeline__track" aria-hidden="true"><span class="timeline__fill"></span></div>';
+      return sectionShell("experience", "Flight log", "Experience", `<div class="timeline">${track}${items}</div>`);
     },
 
     skills() {
       const cards = D.skills
         .map((g) => {
           const chips = g.items.map((i) => `<span class="chip">${esc(i)}</span>`).join("");
-          return `<div class="skill-card reveal"><div class="skill-card__title">${esc(g.group)}</div><div class="chip-row">${chips}</div></div>`;
+          return `<div class="skill-card spot reveal"><div class="skill-card__title">${esc(g.group)}</div><div class="chip-row">${chips}</div></div>`;
         })
         .join("");
-      return sectionShell("skills", "What I work with", "Skills & Tooling", `<div class="skills__grid">${cards}</div>`);
+      return sectionShell("skills", "Systems & instruments", "Skills & Tooling", `<div class="skills__grid">${cards}</div>`);
     },
 
     projects() {
       const cards = D.projects
         .map((p) => {
           const tags = (p.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("");
-          const lnk = p.url ? `<a class="project-card__link" href="${esc(p.url)}" target="_blank" rel="noopener" aria-label="Open project">${icons.external}</a>` : "";
-          return `<article class="project-card reveal">
+          const lnk = p.url ? `<a class="project-card__link" href="${esc(p.url)}" target="_blank" rel="noopener" aria-label="Open ${esc(p.title)} on GitHub">${icons.external}</a>` : "";
+          const badge = p.featured ? '<span class="project-card__badge">New</span>' : "";
+          return `<article class="project-card spot tilt ${p.featured ? "project-card--featured" : ""} reveal">
             <div class="project-card__head">
               <div>
-                <h3 class="project-card__title">${esc(p.title)}</h3>
+                <h3 class="project-card__title">${esc(p.title)}${badge}</h3>
                 ${p.org ? `<div class="project-card__org">${esc(p.org)}</div>` : ""}
               </div>${lnk}
             </div>
             <p class="project-card__desc">${esc(p.description)}</p>
+            ${p.featured && D.launch ? `<a class="project-card__more" href="#tandem">See the launch spotlight${icons.arrow}</a>` : ""}
             ${tags ? `<div class="tag-row">${tags}</div>` : ""}
           </article>`;
         })
         .join("");
-      return sectionShell("projects", "Things I've built", "Projects", `<div class="projects__grid">${cards}</div>`);
+      return sectionShell("projects", "Missions flown", "Projects", `<div class="projects__grid">${cards}</div>`);
     },
 
     repos() {
@@ -202,22 +333,22 @@
         <div class="repos__cta reveal">
           <a class="btn btn--ghost" href="https://github.com/${esc(user)}" target="_blank" rel="noopener">${icons.github}See all repositories on GitHub</a>
         </div>`;
-      return sectionShell("repos", "From my GitHub", "Open Source & Featured Repos", inner);
+      return sectionShell("repos", "Live telemetry · GitHub", "Open Source & Featured Repos", inner);
     },
 
     certifications() {
       const items = D.certifications
-        .map((c) => `<div class="cert-item reveal">
+        .map((c) => `<div class="cert-item spot reveal">
           <div class="cert-item__icon">${icons.badge}</div>
           <div><div class="cert-item__name">${esc(c.name)}</div>${c.issuer ? `<div class="cert-item__issuer">${esc(c.issuer)}</div>` : ""}</div>
         </div>`)
         .join("");
-      return sectionShell("certifications", "Credentials", "Certifications", `<div class="cert-list">${items}</div>`);
+      return sectionShell("certifications", "Flight clearances", "Certifications", `<div class="cert-list">${items}</div>`);
     },
 
     education() {
       const cards = D.education
-        .map((e) => `<div class="info-card reveal">
+        .map((e) => `<div class="info-card spot reveal">
           <div class="info-card__head">
             ${orgLogo(e.logo, e.school)}
             <div>
@@ -229,12 +360,12 @@
           ${e.detail ? `<div class="info-card__detail">${esc(e.detail)}</div>` : ""}
         </div>`)
         .join("");
-      return sectionShell("education", "Where I studied", "Education", `<div class="card-grid">${cards}</div>`);
+      return sectionShell("education", "Training", "Education", `<div class="card-grid">${cards}</div>`);
     },
 
     awards() {
       const cards = D.awards
-        .map((a) => `<div class="info-card reveal">
+        .map((a) => `<div class="info-card spot reveal">
           <div class="info-card__title">${esc(a.name)}</div>
           <div class="info-card__sub">${esc(a.issuer)}</div>
           ${a.date ? `<div class="info-card__meta">${esc(a.date)}</div>` : ""}
@@ -253,7 +384,8 @@
       const phone = D.contact.phone
         ? `<a class="btn btn--ghost" href="tel:${esc(D.contact.phone.replace(/\s/g, ""))}">${icons.phone}${esc(D.contact.phone)}</a>`
         : "";
-      const inner = `<div class="reveal">
+      const inner = `<div class="contact__panel spot reveal">
+        <div class="section__kicker contact__kicker" data-index="${sectionIndex("contact")}">Open channel</div>
         <h2 class="contact__title">Let's build something.</h2>
         <p class="contact__text">Open to architecture, engineering, and consulting conversations. The fastest way to reach me is LinkedIn or email.</p>
         <div class="contact__links">${links}${phone}</div>
@@ -263,12 +395,39 @@
     },
   };
 
+  /* ---- Cached JSON fetch (sessionStorage, TTL) ----------------------------- */
+  // Keeps us well under GitHub's 60 req/hr unauthenticated limit across
+  // reloads, and lets one GitHub payload feed both the repos grid and the
+  // tandem spotlight.
+  const inflight = {};
+  function cachedJSON(url, ttlMs) {
+    const key = "cj:" + url;
+    try {
+      const hit = JSON.parse(sessionStorage.getItem(key) || "null");
+      if (hit && Date.now() - hit.t < ttlMs) return Promise.resolve(hit.v);
+    } catch (e) {}
+    if (inflight[url]) return inflight[url];
+    inflight[url] = fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.status + " " + url);
+        return res.json();
+      })
+      .then((v) => {
+        try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), v })); } catch (e) {}
+        return v;
+      })
+      .finally(() => { delete inflight[url]; });
+    return inflight[url];
+  }
+  const userRepos = () =>
+    cachedJSON(`https://api.github.com/users/${encodeURIComponent(D.meta.githubUser)}/repos?per_page=100&sort=updated`, 15 * 60e3);
+
   function repoCard(r) {
     const lang = r.language ? `<span class="repo-card__lang"><i></i>${esc(r.language)}</span>` : "";
     const stars = r.stargazers_count ? `<span>${icons.star}${r.stargazers_count}</span>` : "";
     const forks = r.forks_count ? `<span>${icons.fork}${r.forks_count}</span>` : "";
     const meta = lang + stars + forks;
-    return `<a class="repo-card reveal is-visible" href="${esc(r.html_url)}" target="_blank" rel="noopener">
+    return `<a class="repo-card spot reveal is-visible" href="${esc(r.html_url)}" target="_blank" rel="noopener">
       <div class="repo-card__top">${icons.repo}<span class="repo-card__name">${esc(r.name)}</span></div>
       <p class="repo-card__desc">${esc(r.description || "No description provided.")}</p>
       ${meta ? `<div class="repo-card__meta">${meta}</div>` : ""}
@@ -281,9 +440,7 @@
     if (!grid || !user) return;
     const fallback = `<p class="repos__status">Couldn't load repositories right now — <a href="https://github.com/${esc(user)}" target="_blank" rel="noopener">browse them on GitHub</a>.</p>`;
     try {
-      const res = await fetch(`https://api.github.com/users/${encodeURIComponent(user)}/repos?per_page=100&sort=updated`);
-      if (!res.ok) throw new Error("GitHub API " + res.status);
-      let repos = await res.json();
+      let repos = await userRepos();
       if (!Array.isArray(repos)) throw new Error("Unexpected response");
       const patterns = (D.meta.githubExcludePatterns || []).map((p) => p.toLowerCase());
       const limit = D.meta.githubRepoLimit || 6;
@@ -299,6 +456,35 @@
       grid.innerHTML = repos.map(repoCard).join("");
     } catch (e) {
       grid.innerHTML = fallback;
+    }
+  }
+
+  // Live numbers for the tandem spotlight: version + downloads from npm,
+  // stars/forks from the (shared, cached) GitHub payload. Each field keeps
+  // its "—" placeholder if its source is unreachable.
+  function loadTandemStats() {
+    const L = D.launch;
+    if (!L) return;
+    const fmt = (n) => (n >= 10000 ? (n / 1000).toFixed(1).replace(/\.0$/, "") + "k" : n.toLocaleString("en-US"));
+    const set = (sel, text) => document.querySelectorAll(sel).forEach((el) => { el.textContent = text; });
+    if (L.npm) {
+      cachedJSON(`https://registry.npmjs.org/${encodeURIComponent(L.npm)}/latest`, 30 * 60e3)
+        .then((p) => p && p.version && set("[data-tandem-version]", "v" + p.version))
+        .catch(() => {});
+      cachedJSON(`https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(L.npm)}`, 60 * 60e3)
+        .then((d) => d && typeof d.downloads === "number" && set("[data-tandem-dl]", fmt(d.downloads)))
+        .catch(() => {});
+    }
+    if (L.repo) {
+      const name = L.repo.split("/").pop().toLowerCase();
+      userRepos()
+        .then((repos) => {
+          const r = Array.isArray(repos) && repos.find((x) => x.name.toLowerCase() === name);
+          if (!r) return;
+          set("[data-tandem-stars]", fmt(r.stargazers_count || 0));
+          set("[data-tandem-forks]", fmt(r.forks_count || 0));
+        })
+        .catch(() => {});
     }
   }
 
@@ -554,6 +740,117 @@
     els.forEach((e) => obs.observe(e));
   }
 
+  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Scroll-linked effects, batched into one rAF per scroll: the nav
+  // "altitude" bar and the experience trajectory that draws as you read.
+  function initScrollFx() {
+    const bar = $(".nav__progress span");
+    const tl = $(".timeline");
+    const fill = tl && tl.querySelector(".timeline__fill");
+    const items = tl ? [...tl.querySelectorAll(".tl-item")] : [];
+    let queued = false;
+    const update = () => {
+      queued = false;
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - innerHeight;
+      if (bar) bar.style.transform = `scaleX(${max > 0 ? Math.min(1, scrollY / max) : 0})`;
+      if (tl && fill) {
+        const r = tl.getBoundingClientRect();
+        // The trajectory tip sits at 60% of the viewport height.
+        const tip = innerHeight * 0.6 - r.top;
+        const p = Math.max(0, Math.min(1, tip / r.height));
+        fill.style.transform = `scaleY(${p})`;
+        items.forEach((it) => it.classList.toggle("is-passed", it.offsetTop <= tip));
+      }
+    };
+    const onScroll = () => {
+      if (!queued) { queued = true; requestAnimationFrame(update); }
+    };
+    addEventListener("scroll", onScroll, { passive: true });
+    addEventListener("resize", onScroll, { passive: true });
+    update();
+  }
+
+  // Count stat values ("5M+", "4.11", "6+") up from zero when they appear.
+  function initCounters() {
+    const els = document.querySelectorAll("[data-count]");
+    if (!els.length || reducedMotion() || !("IntersectionObserver" in window)) return;
+    const run = (el) => {
+      const m = String(el.dataset.count).match(/^(\D*)([\d.]+)(.*)$/);
+      if (!m) return;
+      const [, pre, num, post] = m;
+      const target = parseFloat(num);
+      const decimals = (num.split(".")[1] || "").length;
+      const t0 = performance.now();
+      const dur = 1500;
+      const step = (t) => {
+        const k = Math.min(1, (t - t0) / dur);
+        const e = 1 - Math.pow(2, -10 * k); // easeOutExpo
+        el.textContent = pre + (target * (k < 1 ? e : 1)).toFixed(decimals) + post;
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    const obs = new IntersectionObserver((entries, o) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting) { run(en.target); o.unobserve(en.target); }
+      });
+    }, { threshold: 0.6 });
+    els.forEach((el) => obs.observe(el));
+  }
+
+  // Pointer-tracked spotlight on cards (Linear-style) + a subtle 3D tilt on
+  // project cards. Fine pointers only; one delegated listener.
+  function initCardFx() {
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    const tiltOn = !reducedMotion();
+    let last = null;
+    const reset = (el) => {
+      if (!el) return;
+      el.style.removeProperty("--rx");
+      el.style.removeProperty("--ry");
+    };
+    document.addEventListener("pointermove", (e) => {
+      const card = e.target.closest && e.target.closest(".spot");
+      if (last && last !== card) reset(last);
+      last = card;
+      if (!card) return;
+      const r = card.getBoundingClientRect();
+      const x = e.clientX - r.left;
+      const y = e.clientY - r.top;
+      card.style.setProperty("--mx", x + "px");
+      card.style.setProperty("--my", y + "px");
+      if (tiltOn && card.classList.contains("tilt")) {
+        const max = 3.5;
+        card.style.setProperty("--ry", ((x / r.width - 0.5) * 2 * max).toFixed(2) + "deg");
+        card.style.setProperty("--rx", (-(y / r.height - 0.5) * 2 * max).toFixed(2) + "deg");
+      }
+    }, { passive: true });
+    document.addEventListener("pointerleave", () => { reset(last); last = null; });
+  }
+
+  // Copy-to-clipboard buttons ([data-copy]).
+  function initCopy() {
+    document.addEventListener("click", async (e) => {
+      const btn = e.target.closest && e.target.closest("[data-copy]");
+      if (!btn) return;
+      const label = btn.querySelector("span");
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copy);
+        btn.classList.add("is-done");
+        btn.innerHTML = `${icons.check}<span>Copied</span>`;
+        if (window.MissionUI && window.MissionUI.toast) window.MissionUI.toast("Copied — " + btn.dataset.copy);
+      } catch (err) {
+        if (label) label.textContent = "Select & copy";
+      }
+      setTimeout(() => {
+        btn.classList.remove("is-done");
+        btn.innerHTML = `${icons.copy}<span>Copy</span>`;
+      }, 1800);
+    });
+  }
+
   function initResume() {
     const btn = document.getElementById("resumeBtn");
     if (!btn) return;
@@ -611,6 +908,12 @@
     initNav();
     initReveal();
     initResume();
+    initClock();
+    initScrollFx();
+    initCounters();
+    initCardFx();
+    initCopy();
     loadRepos();
+    loadTandemStats();
   });
 })();

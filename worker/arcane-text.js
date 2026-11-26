@@ -17,6 +17,7 @@ const DEFAULT_TEXT_MODEL = "gemini-2.5-flash";
 
 const SECTIONS = {
   about: "introduction / who I am",
+  tandem: "latest launch: an open-source tool that makes two AI agents work as a team",
   experience: "professional work history and jobs",
   skills: "technical skills and tools",
   projects: "personal and portfolio projects",

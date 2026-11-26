@@ -18,14 +18,21 @@ const portfolioData = {
   meta: {
     name: "Gun Kaewngarm",
     // Short tagline used in the hero + browser title.
-    role: "Cloud & Software Architect",
+    role: "Senior Software Architect",
+    // One-line pitch shown under the name in the hero.
+    tagline:
+      "I architect identity, cloud and distributed systems that serve millions — and I still ship the code myself.",
     // Longer headline (kept in sync with LinkedIn).
     headline:
       "Cloud & Software Architect · Software Engineer · Azure Expert · Carnegie Mellon MSE · Ex-Agoda · Bank of Thailand Scholar",
     location: "Bangkok, Thailand",
+    // Credential line under the hero pitch.
+    creds: ["Bank of Thailand", "Carnegie Mellon MSE", "Ex-Agoda", "Azure Solutions Architect Expert"],
+    // Shown in the hero telemetry line (decimal degrees, local timezone).
+    coords: { lat: 13.7563, lon: 100.5018, tz: "Asia/Bangkok", tzLabel: "ICT" },
     // Used for the <title> and SEO description.
     seoDescription:
-      "Gun Kaewngarm — Cloud & Software Architect at the Bank of Thailand. Carnegie Mellon Master of Software Engineering, ex-Agoda. Building scalable, enterprise-grade systems.",
+      "Gun Kaewngarm — Senior Software Architect at the Bank of Thailand. Carnegie Mellon Master of Software Engineering, ex-Agoda. Building scalable, enterprise-grade systems.",
     // The résumé is generated on the fly from this data by assets/js/resume.js
     // when the visitor clicks the "Résumé (PDF)" button — no static file needed.
     // Initials shown in the nav logo.
@@ -207,9 +214,54 @@ const portfolioData = {
   ],
 
   /* ----------------------------------------------------------------------- */
+  /*  LATEST LAUNCH SPOTLIGHT  (the "tandem" section)                        */
+  /*  `coverage` items render as chips; add a `url` to make one a link       */
+  /*  (e.g. paste the Reddit permalink of a launch post).                    */
+  /* ----------------------------------------------------------------------- */
+  launch: {
+    name: "tandem",
+    // Fallback version; the live one is fetched from npm at runtime.
+    version: "0.4.0",
+    when: "Nov 2026",
+    title: "Claude Code + Gemini, flying as one team.",
+    pitch:
+      "tandem is an open-source CLI and MCP bridge that pairs Claude Code with Google Antigravity (Gemini) on the subscriptions you already pay for. No API keys, no runtime dependencies. Either agent can lead, and reviews always go to the other model family — a fresh context with different priors catches what the author misses.",
+    points: [
+      { value: "5", label: "real release bugs caught by a cold cross-model review — incl. a DNS-rebinding hole in the local dashboard" },
+      { value: "0", label: "API keys and 0 runtime dependencies — drives the headless CLIs you already sign into" },
+      { value: "5h", label: "and weekly plan windows read live from both plans; work is routed around limits automatically" },
+    ],
+    meta: "Built with itself — and this site was redesigned by the same Claude + Gemini pair.",
+    install: "npm install -g tandem-agents",
+    repo: "givewgun/multi-agents-pc",
+    npm: "tandem-agents",
+    image: "assets/img/tandem-dashboard.png",
+    imageAlt: "tandem's local dashboard: work split between Claude and Gemini, 5-hour and weekly plan meters, and live limit routing",
+    links: [
+      { label: "GitHub", icon: "github", url: "https://github.com/givewgun/multi-agents-pc" },
+      { label: "npm", icon: "package", url: "https://www.npmjs.com/package/tandem-agents" },
+      { label: "60-second ELI5", icon: "book", url: "https://github.com/givewgun/multi-agents-pc/blob/main/docs/ELI5.md" },
+    ],
+    coverage: [
+      { label: "Launched on Reddit", url: "" },
+      { label: "Published to npm", url: "https://www.npmjs.com/package/tandem-agents" },
+      { label: "MIT open source", url: "https://github.com/givewgun/multi-agents-pc/blob/main/LICENSE" },
+    ],
+  },
+
+  /* ----------------------------------------------------------------------- */
   /*  PROJECTS                                                               */
   /* ----------------------------------------------------------------------- */
   projects: [
+    {
+      title: "tandem",
+      org: "Open Source · npm tandem-agents",
+      url: "https://github.com/givewgun/multi-agents-pc",
+      featured: true,
+      description:
+        "Runs Claude Code and Gemini (Google Antigravity) as one team on the subscriptions you already pay for — no API keys, zero runtime dependencies. Either agent can lead; plan critiques, code reviews and second opinions always go to the other model family, so nothing self-reviews. Plan-aware routing reads real 5-hour and weekly windows and steers work around rate limits, with a local dashboard, a cost ledger and benchmarks behind the routing rules.",
+      tags: ["Node.js", "MCP", "Claude Code", "Gemini / Antigravity", "Zero deps", "MIT"],
+    },
     {
       title: "Legion",
       org: "Multi-Agent Stock Signal Engine",
@@ -341,15 +393,18 @@ const portfolioData = {
   /*  Reorder this array to reorder the page. Remove a line to hide a        */
   /*  section from both the nav and the page.                               */
   /* ----------------------------------------------------------------------- */
+  //  `nav: false` keeps a section on the page but out of the navbar (it is
+  //  still reachable from the ⌘K command palette).
   sectionOrder: [
     { id: "about", label: "About" },
+    { id: "tandem", label: "Launch" },
     { id: "experience", label: "Experience" },
     { id: "skills", label: "Skills" },
     { id: "projects", label: "Projects" },
     { id: "repos", label: "Open Source" },
-    { id: "certifications", label: "Certifications" },
+    { id: "certifications", label: "Certifications", nav: false },
     { id: "education", label: "Education" },
-    { id: "awards", label: "Awards" },
+    { id: "awards", label: "Awards", nav: false },
     { id: "contact", label: "Contact" },
   ],
 
@@ -361,6 +416,7 @@ const portfolioData = {
   /* ----------------------------------------------------------------------- */
   arcaneLabels: {
     about:          { nav: "Lore",          kicker: "Origin story",        title: "Lore" },
+    tandem:         { nav: "Familiars",     kicker: "A newly bound pact",  title: "The Twin Familiars" },
     experience:     { nav: "Campaign",      kicker: "The journey so far",  title: "Campaign Log" },
     skills:         { nav: "Proficiencies", kicker: "Abilities & feats",   title: "Proficiencies" },
     projects:       { nav: "Quests",        kicker: "Completed quests",    title: "Quests" },

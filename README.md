@@ -1,8 +1,14 @@
 # Gun Kaewngarm — Portfolio
 
-A fast, dependency-free portfolio site. No build step, no framework — just
-HTML, CSS, and vanilla JS. **All content lives in one file**, so updating it
-is quick and safe.
+A "Deep Space" portfolio: a real-time WebGL cosmos (sun-synced planet, warp
+drive), a live tandem launch spotlight, a ⌘K command palette and a live ISS
+ground-track radar. Still no build step and no framework — HTML, CSS and
+vanilla JS, with Three.js vendored locally. **All content lives in one file**,
+so updating it is quick and safe.
+
+Designed and built by Claude (lead: design system, layout, tandem spotlight,
+integration) and Gemini (WebGL scene, command palette, ISS radar) working as
+one team through [tandem](https://github.com/givewgun/multi-agents-pc).
 
 🔗 Live at **[givewgun.com](https://givewgun.com)**
 
@@ -16,6 +22,11 @@ object. Everything on the page is generated from it:
 - **Reorder or hide a section** → edit the `sectionOrder` array at the bottom
   (delete a line to hide that section from the page *and* the nav).
 - **Change your links / email / phone** → edit the `contact` object.
+- **Latest launch spotlight** → edit the `launch` object (pitch, proof points,
+  links). Add a `url` to a `coverage` item (e.g. a Reddit permalink) to turn
+  that chip into a link. Stars, forks, npm version and downloads load live.
+- **Keep a section off the navbar** → add `nav: false` to it in
+  `sectionOrder` (it stays on the page and in the ⌘K palette).
 
 You don't need to touch the HTML or CSS to change content.
 
@@ -56,18 +67,38 @@ Cloudflare DNS add a `CNAME` record for `givewgun.com` → `<user>.github.io`
 ## Structure
 
 ```
-index.html              # markup shell (mostly empty placeholders)
-assets/css/styles.css   # all styling + theme tokens
-assets/js/data.js       # ← YOUR CONTENT lives here
-assets/js/resume.js     # generates the résumé PDF on the fly from data.js
-assets/js/arcane.js     # AI-generated background for the opt-in Arcane theme
-assets/js/main.js       # renders data.js into the page (rarely needs edits)
-CNAME                   # custom domain for GitHub Pages
+index.html                    # markup shell (mostly empty placeholders)
+assets/css/styles.css         # design system, layout, every section, theme tokens
+assets/css/space-scene.css    # WebGL stage
+assets/css/mission-ui.css     # command palette, toasts, ISS radar
+assets/js/data.js             # ← YOUR CONTENT lives here
+assets/js/main.js             # renders data.js; scroll/counter/card effects
+assets/js/space-scene.js      # WebGL cosmos (ES module) + 2D fallback + warp
+assets/js/tandem-orbit.js     # binary-star visual in the launch spotlight
+assets/js/mission-ui.js       # ⌘K palette, easter eggs, ISS ground-track radar
+assets/js/resume.js           # generates the résumé PDF on the fly from data.js
+assets/js/arcane.js           # AI-generated background for the opt-in Arcane theme
+assets/vendor/three.module.min.js  # Three.js r170, self-hosted (no CDN)
+CNAME                         # custom domain for GitHub Pages
 ```
+
+## Space features
+
+- **Cosmos** (`space-scene.js`): layered twinkling starfield, procedural
+  planet with an atmosphere rim and a day/night terminator computed from the
+  real subsolar point, faint nebula, a satellite in orbit; the camera "leaves
+  orbit" as you scroll. Falls back to a 2D canvas when WebGL is unavailable,
+  pauses in hidden tabs and in the Arcane theme, and renders still frames
+  under `prefers-reduced-motion`.
+- **Warp drive**: ⌘K → "Engage warp drive", the Konami code, or type `warp`.
+- **⌘K / Ctrl K palette**: jump to sections, copy email or the npm install
+  command, download the résumé, switch theme.
+- **ISS radar** (footer): live position from `api.wheretheiss.at`, ground
+  track and distance to Bangkok; polls only while visible.
 
 ## Themes
 
-Three themes are available from the menu in the navbar: **Dark**, **Light**,
+Three themes are available from the menu in the navbar: **Dark** (deep space, default), **Light** (high-altitude day),
 and **Arcane** (an opt-in D&D / Baldur's Gate-inspired look). Selecting Arcane
 summons a fresh AI-generated fantasy background each time. A d20 motif shows
 while it generates (and stays as a fallback), a "Summoning…" label appears,

@@ -2,15 +2,30 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gun Kaewngarm — Cloud & Software Architect</title>
-  <meta name="description" content="Gun Kaewngarm — Cloud & Software Architect at the Bank of Thailand. Carnegie Mellon Master of Software Engineering, ex-Agoda." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Gun Kaewngarm — Senior Software Architect</title>
+  <meta name="description" content="Gun Kaewngarm — Senior Software Architect at the Bank of Thailand. Carnegie Mellon MSE, ex-Agoda. Creator of tandem, the open-source Claude Code + Gemini team tool." />
   <meta name="author" content="Gun Kaewngarm" />
+  <meta name="theme-color" content="#05070d" />
+  <meta name="color-scheme" content="dark light" />
+
+  <!-- Apply the saved theme before first paint (no flash of the wrong theme) -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (t !== "dark" && t !== "light" && t !== "arcane") {
+          t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
 
   <!-- Open Graph / social preview -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Gun Kaewngarm — Cloud & Software Architect" />
-  <meta property="og:description" content="Cloud & Software Architect at the Bank of Thailand. Carnegie Mellon MSE, ex-Agoda." />
+  <meta property="og:title" content="Gun Kaewngarm — Senior Software Architect" />
+  <meta property="og:description" content="Senior Software Architect at the Bank of Thailand. Carnegie Mellon MSE, ex-Agoda. Creator of tandem (Claude Code + Gemini as one team)." />
   <meta property="og:url" content="https://givewgun.com" />
   <meta property="og:image" content="https://givewgun.com/assets/og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -18,19 +33,43 @@
 
   <link rel="canonical" href="https://givewgun.com" />
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="modulepreload" href="assets/vendor/three.module.min.js" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/space-scene.css" />
+  <link rel="stylesheet" href="assets/css/mission-ui.css" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Gun Kaewngarm",
+    "jobTitle": "Senior Software Architect",
+    "worksFor": { "@type": "Organization", "name": "Bank of Thailand" },
+    "alumniOf": [
+      { "@type": "CollegeOrUniversity", "name": "Carnegie Mellon University" },
+      { "@type": "CollegeOrUniversity", "name": "Chulalongkorn University" }
+    ],
+    "address": { "@type": "PostalAddress", "addressLocality": "Bangkok", "addressCountry": "TH" },
+    "url": "https://givewgun.com",
+    "sameAs": ["https://www.linkedin.com/in/gun-kaewngarm", "https://github.com/givewgun"]
+  }
+  </script>
 </head>
 <body>
+  <!-- WebGL cosmos (space-scene.js). Decorative, sits behind everything. -->
+  <div class="space-stage" id="spaceStage" aria-hidden="true"></div>
+
   <!-- Skip link for accessibility -->
   <a href="#main" class="skip-link">Skip to content</a>
 
   <!-- Navigation -->
   <header class="nav" id="nav">
+    <div class="nav__progress" aria-hidden="true"><span></span></div>
     <div class="nav__inner">
       <a href="#top" class="nav__logo" aria-label="Home">
         <span class="nav__logo-mark" data-logo></span>
@@ -38,6 +77,7 @@
       </a>
       <nav class="nav__links" data-nav aria-label="Primary"></nav>
       <div class="nav__actions">
+        <button class="nav__cmd" id="cmdkBtn" type="button" aria-label="Open command palette" title="Command palette"><kbd>⌘K</kbd></button>
         <div class="theme-menu" id="themeMenu">
           <button class="theme-toggle" id="themeToggle" aria-haspopup="true" aria-expanded="false" aria-label="Choose theme" title="Choose theme"></button>
         </div>
@@ -58,7 +98,9 @@
         <p class="hero__role" data-hero-role></p>
         <p class="hero__headline" data-hero-headline></p>
         <div class="hero__cta" data-hero-cta></div>
+        <a class="hero__launch" href="#tandem" data-hero-launch hidden></a>
       </div>
+      <div class="hero__hud" data-hero-hud aria-hidden="true"></div>
       <a href="#about" class="hero__scroll" aria-label="Scroll down">
         <span></span>
       </a>
@@ -70,9 +112,12 @@
 
   <footer class="footer">
     <div class="footer__inner">
-      <p class="footer__name" data-footer-name></p>
-      <div class="footer__links" data-footer-links></div>
-      <p class="footer__note">Built with plain HTML, CSS & JS — all content lives in <code>assets/js/data.js</code>.</p>
+      <div class="footer__brand">
+        <p class="footer__name" data-footer-name></p>
+        <div class="footer__links" data-footer-links></div>
+        <p class="footer__note">Designed &amp; engineered by Gun with Claude and Gemini working <a href="#tandem">in tandem</a>. Plain HTML, CSS &amp; JS — no build step. Press <kbd>⌘K</kbd> to explore, or try the Konami code.</p>
+      </div>
+      <div class="iss-radar" id="issRadar"></div>
     </div>
   </footer>
 
@@ -80,5 +125,8 @@
   <script src="assets/js/resume.js"></script>
   <script src="assets/js/arcane.js"></script>
   <script src="assets/js/main.js"></script>
+  <script src="assets/js/tandem-orbit.js"></script>
+  <script src="assets/js/mission-ui.js"></script>
+  <script type="module" src="assets/js/space-scene.js"></script>
 </body>
 </html>

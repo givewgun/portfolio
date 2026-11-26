@@ -74,10 +74,16 @@
     rerollEl.querySelector(".arcane-reroll__btn").addEventListener("click", generate);
   }
 
-  function loadImage(url) {
+  // `minWidth` rejects Pollinations' "Busy right now — the free service is
+  // full" placeholder, which arrives as a valid 1024×576 image instead of the
+  // requested size; the d20 motif fallback then stays up.
+  function loadImage(url, minWidth) {
     return new Promise(function (resolve, reject) {
       var img = new Image();
-      img.onload = function () { resolve(url); };
+      img.onload = function () {
+        if (minWidth && img.naturalWidth < minWidth) reject(new Error("placeholder image"));
+        else resolve(url);
+      };
       img.onerror = function () { reject(new Error("image load failed")); };
       img.src = url;
     });
@@ -168,7 +174,7 @@
       encodeURIComponent(prompt) +
       "?width=1920&height=1080&nologo=true&model=flux-pro&enhance=true&seed=" + seed;
 
-    loadImage(pollUrl)
+    loadImage(pollUrl, 1900)
       .then(function (url) {
         if (token !== genToken) return;
         imgLayer.style.backgroundImage = 'url("' + url + '")';
@@ -468,11 +474,13 @@
   // Warm up the YouTube player on the first interaction (e.g. opening the theme
   // menu) so it's ready by the time Arcane is selected — then playback can start
   // synchronously within that gesture instead of fighting the autoplay policy.
+  // Scoped to the theme menu so ordinary clicks/keys (e.g. the ⌘K palette) don't
+  // pull in YouTube's iframe API for visitors who never pick Arcane.
+  const themeMenu = document.getElementById("themeMenu");
+  const WARM_EVENTS = ["pointerenter", "pointerdown", "focusin", "keydown"];
   function warmUp() {
     createPlayer();
-    document.removeEventListener("pointerdown", warmUp);
-    document.removeEventListener("keydown", warmUp);
+    if (themeMenu) WARM_EVENTS.forEach((ev) => themeMenu.removeEventListener(ev, warmUp));
   }
-  document.addEventListener("pointerdown", warmUp);
-  document.addEventListener("keydown", warmUp);
+  if (themeMenu) WARM_EVENTS.forEach((ev) => themeMenu.addEventListener(ev, warmUp));
 })();

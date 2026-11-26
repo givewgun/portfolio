@@ -151,6 +151,7 @@ export async function handleLaunches(request, env, ctx) {
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   let upstream;
+  let failure = "";
   try {
     upstream = await fetch(cfg.upstreamUrl, {
       headers: {
@@ -159,8 +160,9 @@ export async function handleLaunches(request, env, ctx) {
       },
       signal: controller.signal,
     });
-  } catch (_) {
+  } catch (err) {
     upstream = null;
+    failure = err && err.name === "AbortError" ? "timeout" : "network";
   } finally {
     clearTimeout(timer);
   }
@@ -170,8 +172,10 @@ export async function handleLaunches(request, env, ctx) {
       const staleBody = await cached.text();
       return makeClientResponse(staleBody, 200, "STALE", isHead);
     }
+    // Say why (e.g. 429: Launch Library's free tier is per-IP and Worker
+    // egress IPs are shared). Clients fall back to calling LL2 directly.
     return makeClientResponse(
-      JSON.stringify({ error: "Launch manifest upstream unavailable" }),
+      JSON.stringify({ error: "Launch manifest upstream unavailable", upstream: upstream ? upstream.status : failure }),
       503,
       "ERROR",
       isHead

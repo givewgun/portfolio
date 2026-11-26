@@ -66,7 +66,7 @@ function computeSunDirection(now, planetYaw, tiltZ) {
 function getScrollProgress() {
   const y = window.scrollY || window.pageYOffset || 0;
   const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-  const lift = clamp(y / (window.innerHeight * 1.4), 0, 1);
+  const lift = clamp(y / (Math.max(1, window.innerHeight) * 1.4), 0, 1);
   const eased = 1 - Math.pow(1 - lift, 3);
   return clamp(eased * 0.75 + (y / max) * 0.25, 0, 1);
 }
@@ -394,6 +394,7 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
 
   // 4. Procedural Planet, Fresnel Atmosphere, Orbital Ring & Horizon Satellite
   const planetRoot = new THREE.Group(), planetTilt = new THREE.Group();
+  const planetBase = new THREE.Vector3(); // resting spot; scroll offsets are added per frame
   const tiltZ = -11 * DEG2RAD;
   planetTilt.rotation.z = tiltZ;
   planetRoot.add(planetTilt);
@@ -463,8 +464,9 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
     isMobile = W < 820;
     for (const l of starLayers) l.mat.uniforms.uPixelRatio.value = pr;
     satMat.uniforms.uPixelRatio.value = pr;
-    if (isMobile) { planetRoot.position.set(0, -1.62, 0); planetRoot.scale.setScalar(0.60); }
-    else { planetRoot.position.set(clamp(camera.aspect * 1.5, 1.65, 3.0), 0.12, 0); planetRoot.scale.setScalar(clamp(camera.aspect * 0.62, 0.76, 1.0)); }
+    if (isMobile) { planetBase.set(0, -1.62, 0); planetRoot.scale.setScalar(0.60); }
+    else { planetBase.set(clamp(camera.aspect * 1.5, 1.65, 3.0), 0.12, 0); planetRoot.scale.setScalar(clamp(camera.aspect * 0.62, 0.76, 1.0)); }
+    planetRoot.position.copy(planetBase);
   }
 
   function applyTheme(theme, palette) {
@@ -501,11 +503,17 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
     const sp = state.scroll, fov = baseFov + warpState.fovPunch * 22;
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
     const parX = state.reducedMotion ? 0 : state.mouseX * 0.26, parY = state.reducedMotion ? 0 : state.mouseY * 0.18;
-    // Pan parallel (lookAt follows the camera) so the receding planet slides
-    // up and out to the right instead of converging on screen center.
-    const dx = isMobile ? -sp * 1.2 : -sp * 6.2, dy = isMobile ? -sp * 4.2 : -sp * 5.2;
-    camera.position.set(dx + parX, dy + parY, 7.2 + sp * (isMobile ? 9 : 11));
-    camera.lookAt(dx, dy, 0);
+    // Gentle camera drift (keeps warp streaks and nebula centered) …
+    const dx = isMobile ? -sp * 0.55 : -sp * 1.45, dy = isMobile ? -sp * 1.25 : -sp * 1.15;
+    camera.position.set(dx + parX, dy + parY, 7.2 + sp * (isMobile ? 4.8 : 5.8));
+    camera.lookAt(dx * 0.22, dy * 0.22, 0);
+    // … while the planet itself "leaves orbit": it slides up and out to the
+    // right and recedes, so it clears the content once the hero is passed.
+    planetRoot.position.set(
+      planetBase.x + sp * (isMobile ? 2.2 : 8),
+      planetBase.y + sp * (isMobile ? 8 : 7),
+      planetBase.z - sp * (isMobile ? 6 : 8)
+    );
 
     for (let i = 0; i < starLayers.length; i++) {
       const l = starLayers[i];
@@ -585,9 +593,9 @@ function createFallbackEngine(stageEl, state) {
     }
     ctx.globalAlpha = 1;
 
-    const pR = Math.min(W, H) * (isMobile ? 0.17 : 0.21) * lerp(1, 0.52, sp);
-    const px = isMobile ? lerp(W * 0.5, W * 0.72, sp) : lerp(W * 0.76, W * 0.86, sp);
-    const py = isMobile ? lerp(H * 0.74, H * 0.26, sp) : lerp(H * 0.48, H * 0.22, sp);
+    const pR = Math.min(W, H) * (isMobile ? 0.17 : 0.21) * lerp(1, 0.4, sp);
+    const px = isMobile ? lerp(W * 0.5, W * 0.85, sp) : lerp(W * 0.76, W * 0.95, sp);
+    const py = isMobile ? lerp(H * 0.74, H * 0.02, sp) : lerp(H * 0.48, H * 0.06, sp);
 
     const halo = ctx.createRadialGradient(px, py, pR * 0.85, px, py, pR * 1.65);
     halo.addColorStop(0, `rgba(${ar},${ag},${ab},${isLight ? 0.22 : 0.34})`);

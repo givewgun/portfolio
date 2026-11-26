@@ -477,7 +477,7 @@
   // Scoped to the theme menu so ordinary clicks/keys (e.g. the ⌘K palette) don't
   // pull in YouTube's iframe API for visitors who never pick Arcane.
   const themeMenu = document.getElementById("themeMenu");
-  const WARM_EVENTS = ["pointerenter", "pointerdown", "focusin", "keydown"];
+  const WARM_EVENTS = ["pointerdown", "focusin", "keydown"];
   function warmUp() {
     createPlayer();
     if (themeMenu) WARM_EVENTS.forEach((ev) => themeMenu.removeEventListener(ev, warmUp));

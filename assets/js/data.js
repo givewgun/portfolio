@@ -32,7 +32,7 @@ const portfolioData = {
     coords: { lat: 13.7563, lon: 100.5018, tz: "Asia/Bangkok", tzLabel: "ICT" },
     // Used for the <title> and SEO description.
     seoDescription:
-      "Gun Kaewngarm — Senior Software Architect at the Bank of Thailand. Carnegie Mellon Master of Software Engineering, ex-Agoda. Building scalable, enterprise-grade systems.",
+      "Gun Kaewngarm — Senior Software Architect at the Bank of Thailand. Carnegie Mellon MSE, ex-Agoda. Creator of tandem, the open-source Claude Code + Gemini team tool.",
     // The résumé is generated on the fly from this data by assets/js/resume.js
     // when the visitor clicks the "Résumé (PDF)" button — no static file needed.
     // Initials shown in the nav logo.
@@ -133,7 +133,7 @@ const portfolioData = {
         "Engineered a low-latency data transfer protocol for resource-constrained devices, implementing ECL compression in C on-device with backend caching and decompression, slashing payload sizes by 50%.",
         "Developed a custom middleware simulator to replicate high-concurrency smart label data, enabling rigorous load testing and validation of the revised architecture prior to production deployment.",
         "Streamlined device provisioning by designing and deploying a React-based calibration dashboard to accelerate IoT Smart Label setup.",
-        "Modernized deployment infrastructure by establishing automated CI/CD workflows via GitLab CI and GitHub Actions (`static.yml`), ensuring highly reliable, zero-downtime deployments on Digital Ocean."
+        "Modernized deployment infrastructure by establishing automated CI/CD workflows via GitLab CI and GitHub Actions, ensuring highly reliable, zero-downtime deployments on Digital Ocean."
       ],
       tags: ["Node.js", "FastAPI", "C", "React", "GitLab CI", "IoT"],
     },

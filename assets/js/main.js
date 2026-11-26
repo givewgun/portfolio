@@ -94,14 +94,12 @@
       .map((s) => `<a href="#${s.id}">${esc(s.label)}</a>`)
       .join("");
 
-    // Hero. The <h1> carries the plain name as its accessible label; each
-    // word gets a span so CSS can rise it in, staggered.
+    // Hero. Each word of the name gets a span so CSS can rise it in, staggered.
     $("[data-hero-location]").textContent = D.meta.location;
     const nameEl = $("[data-hero-name]");
-    nameEl.setAttribute("aria-label", D.meta.name);
     nameEl.innerHTML = D.meta.name
       .split(/\s+/)
-      .map((w, i) => `<span class="hero__word" aria-hidden="true"><span style="--i:${i}">${esc(w)}</span></span>`)
+      .map((w, i) => `<span class="hero__word"><span style="--i:${i}">${esc(w)}</span></span>`)
       .join(" ");
     $("[data-hero-role]").textContent = D.meta.role;
     const creds = (D.meta.creds || []).map((c) => `<span>${esc(c)}</span>`).join("");
@@ -400,7 +398,7 @@
   // reloads, and lets one GitHub payload feed both the repos grid and the
   // tandem spotlight.
   const inflight = {};
-  function cachedJSON(url, ttlMs) {
+  function cachedJSON(url, ttlMs, shape) {
     const key = "cj:" + url;
     try {
       const hit = JSON.parse(sessionStorage.getItem(key) || "null");
@@ -413,14 +411,20 @@
         return res.json();
       })
       .then((v) => {
+        if (shape) v = shape(v);
         try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), v })); } catch (e) {}
         return v;
       })
       .finally(() => { delete inflight[url]; });
     return inflight[url];
   }
+  const REPO_FIELDS = ["name", "html_url", "description", "language", "stargazers_count", "forks_count", "fork", "archived", "pushed_at"];
   const userRepos = () =>
-    cachedJSON(`https://api.github.com/users/${encodeURIComponent(D.meta.githubUser)}/repos?per_page=100&sort=updated`, 15 * 60e3);
+    cachedJSON(
+      `https://api.github.com/users/${encodeURIComponent(D.meta.githubUser)}/repos?per_page=100&sort=updated`,
+      15 * 60e3,
+      (list) => (Array.isArray(list) ? list.map((r) => Object.fromEntries(REPO_FIELDS.map((f) => [f, r[f]]))) : list)
+    );
 
   function repoCard(r) {
     const lang = r.language ? `<span class="repo-card__lang"><i></i>${esc(r.language)}</span>` : "";
@@ -588,13 +592,20 @@
     setNote("contact", "parley", !arcane ? "off" : parleyBusy ? "busy" : lastParley ? "done" : "off");
   }
 
+  // localStorage throws when the visitor blocks site data; never let that
+  // abort boot (initReveal runs later and would leave sections invisible).
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+
   function initTheme() {
     const root = document.documentElement;
     const trigger = $("#themeToggle");
     const menu = $("#themeMenu");
     if (!trigger || !menu) return;
 
-    let current = localStorage.getItem("theme");
+    let current = store.get("theme");
     if (!THEMES.some((t) => t.id === current)) {
       current = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
     }
@@ -610,7 +621,7 @@
     // ── Discovery cue: nudge visitors toward the opt-in Arcane theme ──────────
     // Stops once the visitor has actually tried Arcane (persisted).
     let hint = null;
-    const arcaneSeen = () => localStorage.getItem("arcaneSeen") === "1";
+    const arcaneSeen = () => store.get("arcaneSeen") === "1";
     const hideHint = () => { if (hint) hint.classList.remove("is-visible"); };
     const clearArcaneCue = () => {
       trigger.classList.remove("theme-toggle--hint");
@@ -621,7 +632,7 @@
       trigger.classList.add("theme-toggle--hint");
       const arcaneItem = pop.querySelector('[data-theme-id="arcane"]');
       if (arcaneItem) arcaneItem.classList.add("theme-menu__item--nudge");
-      if (localStorage.getItem("arcaneHintShown") !== "1") {
+      if (store.get("arcaneHintShown") !== "1") {
         hint = document.createElement("div");
         hint.className = "theme-hint";
         hint.innerHTML =
@@ -635,7 +646,7 @@
           e.stopPropagation();
           clearTimeout(autoHide);
           hideHint();
-          localStorage.setItem("arcaneHintShown", "1");
+          store.set("arcaneHintShown", "1");
         });
         hint.addEventListener("click", () => { hideHint(); open(true); });
       }
@@ -644,7 +655,7 @@
     const apply = (id) => {
       const theme = THEMES.find((t) => t.id === id) || THEMES[0];
       root.setAttribute("data-theme", theme.id);
-      localStorage.setItem("theme", theme.id);
+      store.set("theme", theme.id);
       trigger.innerHTML = icons[theme.icon];
       pop.querySelectorAll("[data-theme-id]").forEach((b) => {
         const on = b.dataset.themeId === theme.id;
@@ -652,8 +663,8 @@
         b.setAttribute("aria-checked", String(on));
       });
       if (theme.id === "arcane") {
-        localStorage.setItem("arcaneSeen", "1");
-        localStorage.setItem("arcaneHintShown", "1");
+        store.set("arcaneSeen", "1");
+        store.set("arcaneHintShown", "1");
         clearArcaneCue();
         hideHint();
       }
@@ -670,7 +681,7 @@
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
       hideHint();
-      localStorage.setItem("arcaneHintShown", "1");
+      store.set("arcaneHintShown", "1");
       open(!menu.classList.contains("is-open"));
     });
     pop.addEventListener("click", (e) => {
@@ -749,26 +760,34 @@
     const tl = $(".timeline");
     const fill = tl && tl.querySelector(".timeline__fill");
     const items = tl ? [...tl.querySelectorAll(".tl-item")] : [];
+    let tops = [];
+    let maxScroll = 0;
+    const measure = () => {
+      maxScroll = document.documentElement.scrollHeight - innerHeight;
+      tops = items.map((it) => it.offsetTop);
+    };
     let queued = false;
     const update = () => {
       queued = false;
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - innerHeight;
-      if (bar) bar.style.transform = `scaleX(${max > 0 ? Math.min(1, scrollY / max) : 0})`;
-      if (tl && fill) {
-        const r = tl.getBoundingClientRect();
-        // The trajectory tip sits at 60% of the viewport height.
+      // reads first …
+      const y = scrollY;
+      const r = tl && fill ? tl.getBoundingClientRect() : null;
+      // … then writes. The trajectory tip sits at 60% of the viewport height.
+      if (bar) bar.style.transform = `scaleX(${maxScroll > 0 ? Math.min(1, y / maxScroll) : 0})`;
+      if (r) {
         const tip = innerHeight * 0.6 - r.top;
-        const p = Math.max(0, Math.min(1, tip / r.height));
-        fill.style.transform = `scaleY(${p})`;
-        items.forEach((it) => it.classList.toggle("is-passed", it.offsetTop <= tip));
+        fill.style.transform = `scaleY(${Math.max(0, Math.min(1, tip / r.height))})`;
+        items.forEach((it, i) => it.classList.toggle("is-passed", tops[i] <= tip));
       }
     };
     const onScroll = () => {
       if (!queued) { queued = true; requestAnimationFrame(update); }
     };
     addEventListener("scroll", onScroll, { passive: true });
-    addEventListener("resize", onScroll, { passive: true });
+    addEventListener("resize", () => { measure(); onScroll(); }, { passive: true });
+    // late layout shifts (fonts, repo cards, images) change the page height
+    if ("ResizeObserver" in window) new ResizeObserver(() => { measure(); onScroll(); }).observe(document.body);
+    measure();
     update();
   }
 
@@ -806,19 +825,21 @@
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     const tiltOn = !reducedMotion();
     let last = null;
+    let pending = null;
+    let raf = 0;
     const reset = (el) => {
       if (!el) return;
-      el.style.removeProperty("--rx");
-      el.style.removeProperty("--ry");
+      ["--rx", "--ry", "--mx", "--my"].forEach((v) => el.style.removeProperty(v));
     };
-    document.addEventListener("pointermove", (e) => {
-      const card = e.target.closest && e.target.closest(".spot");
+    const apply = () => {
+      raf = 0;
+      const { card, cx, cy } = pending;
       if (last && last !== card) reset(last);
       last = card;
       if (!card) return;
       const r = card.getBoundingClientRect();
-      const x = e.clientX - r.left;
-      const y = e.clientY - r.top;
+      const x = cx - r.left;
+      const y = cy - r.top;
       card.style.setProperty("--mx", x + "px");
       card.style.setProperty("--my", y + "px");
       if (tiltOn && card.classList.contains("tilt")) {
@@ -826,8 +847,17 @@
         card.style.setProperty("--ry", ((x / r.width - 0.5) * 2 * max).toFixed(2) + "deg");
         card.style.setProperty("--rx", (-(y / r.height - 0.5) * 2 * max).toFixed(2) + "deg");
       }
+    };
+    document.addEventListener("pointermove", (e) => {
+      pending = { card: e.target.closest ? e.target.closest(".spot") : null, cx: e.clientX, cy: e.clientY };
+      if (!raf) raf = requestAnimationFrame(apply);
     }, { passive: true });
-    document.addEventListener("pointerleave", () => { reset(last); last = null; });
+    document.documentElement.addEventListener("pointerleave", () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      reset(last);
+      last = null;
+    });
   }
 
   // Copy-to-clipboard buttons ([data-copy]).

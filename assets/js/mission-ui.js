@@ -263,7 +263,11 @@
 
     visibleCommands = [];
     const html = [];
-    GROUPS.forEach((group) => {
+    // While searching, the group holding the best match comes first, so the
+    // top (pre-selected) result is the best match overall.
+    const best = (g) => byGroup[g].reduce((m, e) => Math.max(m, e.score), 0);
+    const order = q ? GROUPS.slice().sort((a, b) => best(b) - best(a)) : GROUPS;
+    order.forEach((group) => {
       const entries = byGroup[group];
       if (!entries.length) return;
       if (q) entries.sort((a, b) => b.score - a.score);

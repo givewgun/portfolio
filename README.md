@@ -96,6 +96,16 @@ CNAME                         # custom domain for GitHub Pages
 - **ISS radar** (footer): live position from `api.wheretheiss.at`, ground
   track and distance to Bangkok; polls only while visible.
 
+## Social preview
+
+`assets/og-image.png` (1200×630) is a screenshot of the live hero in a
+chrome-free render mode. To regenerate it after changing the hero, serve the
+site and run:
+
+```bash
+chrome --headless=new --hide-scrollbars --window-size=1200,630   --virtual-time-budget=7000 --screenshot=assets/og-image.png   "http://localhost:8080/?og"
+```
+
 ## Themes
 
 Three themes are available from the menu in the navbar: **Dark** (deep space, default), **Light** (high-altitude day),

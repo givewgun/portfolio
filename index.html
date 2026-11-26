@@ -19,6 +19,11 @@
         }
         document.documentElement.setAttribute("data-theme", t);
       } catch (e) {}
+      // ?og renders a chrome-free hero for regenerating assets/og-image.png
+      if (/[?&]og(&|=|$)/.test(location.search)) {
+        document.documentElement.setAttribute("data-theme", "dark");
+        document.documentElement.classList.add("og");
+      }
     })();
   </script>
 

@@ -32,7 +32,7 @@ html[data-theme="dark"] {
   --border-strong: rgba(160, 182, 222, 0.26);
   --text: #e8edf6;
   --text-soft: #a5b2c8;
-  --text-dim: #6c7a93;
+  --text-dim: #8392ab;
   --accent: #8ab4ff;
   --accent-2: #f6b26b;
   --accent-soft: rgba(138, 180, 255, 0.12);
@@ -57,7 +57,7 @@ html[data-theme="light"] {
   --border-strong: rgba(16, 32, 64, 0.2);
   --text: #0b1220;
   --text-soft: #42516a;
-  --text-dim: #6b7a92;
+  --text-dim: #536178;
   --accent: #2557d6;
   --accent-2: #c2610f;
   --accent-soft: rgba(37, 87, 214, 0.09);
@@ -235,7 +235,7 @@ html[data-theme="arcane"] .arcane-music {
 /* Arcane: the sci-fi telemetry chrome stays out of the fantasy theme */
 html[data-theme="arcane"] .hero__hud,
 html[data-theme="arcane"] .nav__progress { display: none; }
-html[data-theme="arcane"] .hero__name .hero__word > span { background: linear-gradient(120deg, var(--text), var(--text) 45%, var(--accent)); -webkit-background-clip: text; background-clip: text; }
+html[data-theme="arcane"] .hero__name .hero__word > span { background: linear-gradient(120deg, var(--text), var(--text) 45%, var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 /* ==========================================================================
    RESET / BASE
@@ -265,7 +265,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-duration: 0.001ms !important; animation-delay: 0ms !important; transition-duration: 0.001ms !important; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
 
 a { color: inherit; text-decoration: none; }
@@ -410,9 +410,10 @@ html[data-theme="arcane"] .nav__logo-mark::after { display: none; }
   box-shadow: var(--shadow);
   display: flex; flex-direction: column; gap: 2px;
   opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top right;
-  pointer-events: none; transition: var(--transition);
+  pointer-events: none; visibility: hidden;
+  transition: opacity var(--transition), transform var(--transition), visibility 0s linear 0.25s;
 }
-.theme-menu.is-open .theme-menu__pop { opacity: 1; transform: none; pointer-events: auto; }
+.theme-menu.is-open .theme-menu__pop { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition-delay: 0s; }
 .theme-menu__item {
   display: flex; align-items: center; gap: 0.6rem; width: 100%;
   padding: 0.5rem 0.7rem; border-radius: 8px; cursor: pointer;
@@ -452,10 +453,10 @@ html[data-theme="arcane"] .nav__logo-mark::after { display: none; }
   background: linear-gradient(135deg, #271c39, #17111f);
   color: #f1e9da; border: 1px solid rgba(154, 108, 255, 0.45);
   box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.7); font-size: 0.82rem;
-  opacity: 0; transform: translateY(-6px); pointer-events: none;
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  opacity: 0; transform: translateY(-6px); pointer-events: none; visibility: hidden;
+  transition: opacity 0.35s ease, transform 0.35s ease, visibility 0s linear 0.35s;
 }
-.theme-hint.is-visible { opacity: 1; transform: none; pointer-events: auto; }
+.theme-hint.is-visible { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition-delay: 0s; }
 .theme-hint::before {
   content: ""; position: absolute; top: -5px; right: 13px;
   width: 9px; height: 9px; transform: rotate(45deg);
@@ -491,10 +492,10 @@ html[data-theme="arcane"] .nav__logo-mark::after { display: none; }
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     border-bottom: 1px solid var(--border);
     padding: 0.5rem var(--gutter) 1.25rem;
-    transform: translateY(-120%); opacity: 0; pointer-events: none;
-    transition: var(--transition);
+    transform: translateY(-120%); opacity: 0; pointer-events: none; visibility: hidden;
+    transition: transform var(--transition), opacity var(--transition), visibility 0s linear 0.25s;
   }
-  .nav__links.is-open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+  .nav__links.is-open { transform: translateY(0); opacity: 1; pointer-events: auto; visibility: visible; transition-delay: 0s; }
   .nav__links a { padding: 0.85rem 0.5rem; border-radius: 0; font-size: 0.95rem; border-bottom: 1px solid var(--border); }
 }
 @media (max-width: 520px) { .nav__cmd { display: none; } .nav__logo-text { display: none; } }
@@ -582,6 +583,7 @@ html[data-theme="arcane"] .hero__name { font-size: clamp(2.6rem, 8.5vw, 5.6rem);
   font-size: 0.86rem; color: var(--text-soft);
   transition: border-color var(--transition), color var(--transition), box-shadow var(--transition);
 }
+.hero__launch[hidden] { display: none; }
 .hero__launch:hover { border-color: color-mix(in srgb, var(--accent-2) 55%, transparent); color: var(--text); box-shadow: 0 0 0 4px var(--accent-2-soft); }
 .hero__launch strong { color: var(--text); font-weight: 600; }
 .hero__launch [data-tandem-version] { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); }
@@ -653,6 +655,10 @@ html[data-theme="arcane"] .btn--primary { color: #fff; }
    ========================================================================== */
 .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.8s var(--ease), transform 0.8s var(--ease); }
 .reveal.is-visible { opacity: 1; transform: none; }
+.spot.reveal.is-visible {
+  transition: opacity 0.8s var(--ease), transform 0.45s var(--ease),
+    border-color var(--transition), box-shadow var(--transition);
+}
 
 
 /* ==========================================================================
@@ -921,7 +927,7 @@ a.launch__chip:hover { color: var(--accent); border-color: var(--accent); }
 /* subtle 3D tilt (vars set by main.js on fine pointers) */
 .tilt.reveal.is-visible {
   transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
-  transition: opacity 0.8s var(--ease), transform 0.25s ease-out, border-color var(--transition), box-shadow var(--transition);
+  transition: opacity 0.8s var(--ease), transform 0.45s var(--ease), border-color var(--transition), box-shadow var(--transition);
 }
 .tilt.reveal.is-visible:hover { transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-4px); }
 
@@ -1019,3 +1025,9 @@ html[data-theme="arcane"] .contact__title { letter-spacing: 0.01em; font-weight:
 .footer__note a:hover { color: var(--accent); }
 .iss-radar:empty { display: none; }
 @media (max-width: 860px) { .footer__inner { grid-template-columns: 1fr; } }
+
+/* Social-card render mode (index.html?og) — see README "Social preview" */
+html.og .nav, html.og .hero__cta, html.og .hero__scroll, html.og .theme-hint, html.og #sections, html.og .footer { display: none !important; }
+html.og .hero { min-height: 630px; height: 630px; padding: 0 72px; }
+html.og .hero__inner { max-width: none; }
+html.og .hero__hud { display: none; }

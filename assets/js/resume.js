@@ -63,7 +63,7 @@
       this.doc = new JsPDF({ unit: "pt", format: "a4", compress: true });
       this.pageW = this.doc.internal.pageSize.getWidth();
       this.pageH = this.doc.internal.pageSize.getHeight();
-      this.margin = 44;
+      this.margin = 40;
       this.x = this.margin;
       this.y = this.margin;
       this.maxW = this.pageW - this.margin * 2;
@@ -239,6 +239,8 @@
     if (m.location) contactTokens.push({ label: m.location });
     if (c.email) contactTokens.push({ label: c.email, url: "mailto:" + c.email });
     if (c.phone) contactTokens.push({ label: c.phone });
+    contactTokens.push({ label: "givewgun.com", url: "https://givewgun.com" });
+    contactTokens.push({ label: "Architecture & ADRs", url: "https://givewgun.com/architecture.html" });
     (c.links || []).forEach((l) => {
       if (l.icon === "linkedin" || l.icon === "github") {
         contactTokens.push({ label: l.url.replace(/^https?:\/\/(www\.)?/, ""), url: l.url });
@@ -247,23 +249,24 @@
     b.tokens(contactTokens);
     b.gap(4);
     b.rule();
-    b.gap(14);
+    b.gap(12);
 
-    // Summary
+    // Summary (concise 2 paragraphs max for a tight 2-page architect résumé)
     if (data.about && (data.about.paragraphs || []).length) {
       b.sectionTitle("Summary");
-      data.about.paragraphs.forEach((p) => b.paragraph(p, { gap: 5 }));
+      data.about.paragraphs.slice(0, 2).forEach((p) => b.paragraph(p, { size: 9.2, gap: 4 }));
     }
 
-    // Experience
+    // Experience (core engineering & architecture roles; omit brief undergrad internships)
     if ((data.experience || []).length) {
       b.sectionTitle("Experience");
-      data.experience.forEach((e) => {
+      const roles = data.experience.filter((e) => !/\(intern\)/i.test(e.role || ""));
+      roles.forEach((e) => {
         b.ensure(46);
         b.rowTitleMeta(e.role, [e.start, e.end].filter(Boolean).join(" – "));
         b.subtitle(e.company, [e.location, e.note].filter(Boolean).join(" · "));
         (e.bullets || []).forEach((bl) => b.bullet(bl));
-        b.gap(5);
+        b.gap(4);
       });
     }
 
@@ -273,14 +276,24 @@
       data.skills.forEach((g) => b.labeled(g.group, (g.items || []).join("  ·  ")));
     }
 
-    // Projects
-    if ((data.projects || []).length) {
-      b.sectionTitle("Projects");
-      data.projects.forEach((p) => {
-        b.ensure(40);
+    // Selected Architecture & Open-Source Systems (tandem + top 3 curated projects)
+    const featuredSystems = [];
+    if (data.launch) {
+      featuredSystems.push({
+        title: data.launch.name,
+        org: "Open Source · npm tandem-agents · 15 ADRs",
+        description: data.launch.pitch,
+        tags: ["Node.js", "MCP", "Zero runtime deps", "Claude Code", "Gemini"],
+      });
+    }
+    (data.projects || []).slice(0, 3).forEach((p) => featuredSystems.push(p));
+    if (featuredSystems.length) {
+      b.sectionTitle("Selected Architecture & Open Source");
+      featuredSystems.forEach((p) => {
+        b.ensure(38);
         b.rowTitleMeta(p.title, p.org || "");
-        b.paragraph(p.description, { size: 9.5, color: COLORS.muted, gap: 3 });
-        if (p.tags && p.tags.length) b.paragraph(p.tags.join("  ·  "), { size: 8.5, color: COLORS.accent, gap: 6 });
+        b.paragraph(p.description, { size: 9, color: COLORS.muted, gap: 2 });
+        if (p.tags && p.tags.length) b.paragraph(p.tags.join("  ·  "), { size: 8.2, color: COLORS.accent, gap: 5 });
       });
     }
 

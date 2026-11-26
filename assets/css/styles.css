@@ -1132,13 +1132,45 @@ html.og .hero__hud { display: none; }
 .flight-chip:focus-visible .flight-chip__play {
   color: var(--accent);
 }
+/* Architecture nav pill & projects architecture callout */
+.nav__links a.nav__arch {
+  margin-left: 0.35rem;
+  border-color: color-mix(in srgb, var(--ok) 45%, var(--border));
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+.nav__links a.nav__arch:hover { border-color: var(--ok); color: var(--ok); }
+.nav__links a.nav__flight:not(.nav__arch) { margin-left: 0.35rem; }
+.arch-callout {
+  margin-top: 1.25rem;
+  padding: 1.45rem 1.65rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+}
+.arch-callout__kicker {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+.arch-callout__text {
+  color: var(--text-soft);
+  font-size: 0.94rem;
+  margin-top: 0.35rem;
+  max-width: 660px;
+}
 /* Mars nav link: Mars-orange accent next to Flight */
 .nav__links a.nav__mars { margin-left: 0.35rem; border-color: color-mix(in srgb, #e0703a 45%, var(--border)); }
 .nav__links a.nav__mars:hover { border-color: #e0703a; color: #e0703a; }
-/* Keep the nav on one line now that it carries Flight + Mars */
+/* Keep the nav on one line now that it carries Architecture + Flight + Mars */
 .nav__logo-text, .nav__links a, .nav__cmd kbd { white-space: nowrap; }
 @media (min-width: 921px) and (max-width: 1280px) {
   .nav__links a { padding: 0.45rem 0.5rem; font-size: 0.82rem; }
+  .nav__links a.nav__arch,
+  .nav__links a.nav__flight:not(.nav__arch),
   .nav__links a.nav__mars { margin-left: 0.2rem; }
 }
 @media (min-width: 921px) and (max-width: 1080px) {

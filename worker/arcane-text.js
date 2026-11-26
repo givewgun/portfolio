@@ -1,19 +1,24 @@
 /*
  * /api/arcane-text — generates RPG-flavored *wording* for the Arcane theme
- * using Google Gemini (free text model). It only rewrites labels/flavor copy,
- * never the real portfolio content.
+ * using Google Gemini. It only rewrites fixed portfolio labels/bio copy,
+ * never arbitrary user input.
+ *
+ * Hardened against open-proxy and prompt-injection abuse:
+ *   - Enforces same-origin / allowed-origin browser requests (no ACAO: *).
+ *   - Per-IP rate limit (12 requests / 10 minutes).
+ *   - Server-owned source bio (`LORE_BASE`) and section map (`SECTIONS`):
+ *     any client-supplied `base` text is ignored.
  *
  *   ?kind=labels  → JSON map of section id → { nav, kicker, title }
- *   ?kind=parley  → JSON { title, text } — a fresh "call to parley" for the
- *                   contact section (regenerated on every summon)
- *   ?seed=N       → variation seed so each summon differs
- *
- * Uses the same secret as the image route (`GEMINI_API_KEY`). Optionally set
- * `GEMINI_TEXT_MODEL` to override the model. On any error it returns a non-2xx
- * JSON response so the browser keeps the static labels from data.js.
+ *   ?kind=parley  → JSON { title, text } — a fresh "call to parley"
+ *   ?kind=lore    → JSON { paragraphs: [...] } — fantasy retelling of real bio
+ *   ?seed=N       → integer variation seed (0–999999)
  */
 
+import { validateOrigin, checkRateLimit, jsonResponse } from "./guard.js";
+
 const DEFAULT_TEXT_MODEL = "gemini-2.5-flash";
+const TIMEOUT_MS = 12000;
 
 const SECTIONS = {
   about: "introduction / who I am",
@@ -28,18 +33,15 @@ const SECTIONS = {
   contact: "contact / get in touch",
 };
 
-function json(obj, status) {
-  return new Response(JSON.stringify(obj), {
-    status: status || 200,
-    headers: {
-      "content-type": "application/json",
-      "cache-control": "no-store",
-      "access-control-allow-origin": "*",
-    },
-  });
-}
+// Server-owned copy of the real portfolio bio so callers cannot inject arbitrary
+// prompts via POST body.
+const LORE_BASE = [
+  "I'm a Software & Enterprise Architect at the Bank of Thailand, where I design and deliver enterprise-scale systems that drive innovation and reliability. My work spans identity & access management serving millions of users, DevOps transformation, cloud adoption, and architecture governance.",
+  "Beyond architecture, I keep my hands on the keyboard — making sure solutions stay practical, efficient, and maintainable across both professional and personal projects. I hold a Master of Software Engineering from Carnegie Mellon University, fully funded through a Bank of Thailand scholarship.",
+  "Previously, I built scalable, high-performance systems at Agoda — one of Thailand's top tech companies — and led an IoT backend redesign at Adrich (in partnership with CMU) that scaled from 20,000 to 5 million devices.",
+];
 
-function buildPrompt(kind, seed, base) {
+function buildPrompt(kind, seed) {
   if (kind === "lore") {
     return (
       "You are a master loremaster in a high-fantasy Dungeons & Dragons world. " +
@@ -50,7 +52,7 @@ function buildPrompt(kind, seed, base) {
       "fantasy flavor (guilds, realms, arcane crafts, artifacts, scaling spells) " +
       "but keep each fact recognizable to a reader. Keep the same number of " +
       "paragraphs and a similar length to the source.\n" +
-      "Base biography (one string per paragraph): " + JSON.stringify(base || []) + "\n" +
+      "Base biography (one string per paragraph): " + JSON.stringify(LORE_BASE) + "\n" +
       'Return JSON: { "paragraphs": [ ... ] } with the same number of paragraphs. ' +
       "Variation seed " + seed + " — make this retelling noticeably different from others."
     );
@@ -83,57 +85,89 @@ function buildPrompt(kind, seed, base) {
   );
 }
 
-export async function handleArcaneText(request, env) {
+export async function handleArcaneText(request, env, ctx) {
+  const origin = validateOrigin(request);
+  if (!origin.ok) {
+    return jsonResponse({ error: "Forbidden" }, 403, null);
+  }
+
+  const method = request.method || "GET";
+  if (method !== "GET" && method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405, origin.corsOrigin, { allow: "GET, POST" });
+  }
+
   const key = env.GEMINI_API_KEY;
-  if (!key) return json({ error: "GEMINI_API_KEY not configured" }, 503);
+  if (!key) return jsonResponse({ error: "GEMINI_API_KEY not configured" }, 503, origin.corsOrigin);
+
+  const rl = await checkRateLimit(request, ctx, { bucket: "arcane-text", limit: 12, windowSec: 600 });
+  if (!rl.ok) {
+    return jsonResponse(
+      { error: "Rate limit exceeded. Try again shortly." },
+      429,
+      origin.corsOrigin,
+      { "retry-after": String(rl.retryAfter) }
+    );
+  }
 
   const url = new URL(request.url);
-  let kind = url.searchParams.get("kind") || "labels";
-  let seed = url.searchParams.get("seed") || String(Math.floor(Math.random() * 1e6));
-  let base = null; // source content (e.g. the real About paragraphs) for `lore`
+  let rawKind = url.searchParams.get("kind") || "labels";
+  let rawSeed = url.searchParams.get("seed");
 
-  if (request.method === "POST") {
+  // Backward-compatible with cached clients that POST { kind, seed }.
+  // Client-supplied `base` is intentionally ignored.
+  if (method === "POST") {
     try {
       const body = await request.json();
       if (body && typeof body === "object") {
-        if (body.kind) kind = body.kind;
-        if (body.seed) seed = String(body.seed);
-        if (Array.isArray(body.base)) base = body.base.map(String).slice(0, 12);
+        if (typeof body.kind === "string") rawKind = body.kind;
+        if (body.seed != null) rawSeed = String(body.seed);
       }
-    } catch (e) { /* ignore malformed body, fall back to query params */ }
+    } catch (_) {
+      /* ignore malformed body, fall back to query params */
+    }
   }
 
-  kind = kind === "parley" || kind === "lore" ? kind : "labels";
-  seed = String(seed).slice(0, 12);
-  const model = env.GEMINI_TEXT_MODEL || DEFAULT_TEXT_MODEL;
+  const kind = rawKind === "parley" || rawKind === "lore" ? rawKind : "labels";
+  const parsedSeed = parseInt(rawSeed || "", 10);
+  const seed = Number.isInteger(parsedSeed) && parsedSeed >= 0 && parsedSeed <= 999999
+    ? parsedSeed
+    : Math.floor(Math.random() * 1e6);
 
+  const model = env.GEMINI_TEXT_MODEL || DEFAULT_TEXT_MODEL;
   const endpoint =
     "https://generativelanguage.googleapis.com/v1beta/models/" +
     encodeURIComponent(model) +
-    ":generateContent?key=" + encodeURIComponent(key);
+    ":generateContent";
 
   const payload = {
-    contents: [{ parts: [{ text: buildPrompt(kind, seed, base) }] }],
+    contents: [{ parts: [{ text: buildPrompt(kind, seed) }] }],
     generationConfig: {
       responseMimeType: "application/json",
       temperature: kind === "labels" ? 0.9 : 1.1,
     },
   };
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let res;
   try {
     res = await fetch(endpoint, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-goog-api-key": key,
+      },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
-  } catch (e) {
-    return json({ error: "upstream request failed", detail: String(e) }, 502);
+  } catch (_) {
+    return jsonResponse({ error: "upstream request failed" }, 502, origin.corsOrigin);
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!res.ok) {
-    const detail = (await res.text()).slice(0, 400);
-    return json({ error: "gemini error", status: res.status, detail }, 502);
+    return jsonResponse({ error: "upstream text error", status: res.status }, 502, origin.corsOrigin);
   }
 
   const data = await res.json();
@@ -145,16 +179,15 @@ export async function handleArcaneText(request, env) {
   let parsed;
   try {
     parsed = JSON.parse(text);
-  } catch (e) {
-    // Be forgiving if the model wraps JSON in prose or code fences.
+  } catch (_) {
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return json({ error: "no JSON in response", raw: text.slice(0, 200) }, 502);
+    if (!match) return jsonResponse({ error: "no JSON in response" }, 502, origin.corsOrigin);
     try {
       parsed = JSON.parse(match[0]);
-    } catch (e2) {
-      return json({ error: "invalid JSON in response", raw: text.slice(0, 200) }, 502);
+    } catch (_2) {
+      return jsonResponse({ error: "invalid JSON in response" }, 502, origin.corsOrigin);
     }
   }
 
-  return json(parsed);
+  return jsonResponse(parsed, 200, origin.corsOrigin);
 }

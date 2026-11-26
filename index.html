@@ -47,6 +47,7 @@
   <link rel="stylesheet" href="assets/css/styles.css" />
   <link rel="stylesheet" href="assets/css/space-scene.css" />
   <link rel="stylesheet" href="assets/css/mission-ui.css" />
+  <noscript><style>.reveal{opacity:1!important;transform:none!important;}</style></noscript>
 
   <script type="application/ld+json">
   {
@@ -72,15 +73,25 @@
   <!-- Skip link for accessibility -->
   <a href="#main" class="skip-link">Skip to content</a>
 
-  <!-- Navigation -->
+  <!-- Navigation (pre-populated for crawlers & no-JS; enhanced by main.js) -->
   <header class="nav" id="nav">
     <div class="nav__progress" aria-hidden="true"><span></span></div>
     <div class="nav__inner">
       <a href="#top" class="nav__logo" aria-label="Home">
-        <span class="nav__logo-mark" data-logo></span>
-        <span class="nav__logo-text" data-name></span>
+        <span class="nav__logo-mark" data-logo>GK</span>
+        <span class="nav__logo-text" data-name>Gun Kaewngarm</span>
       </a>
-      <nav class="nav__links" data-nav aria-label="Primary"></nav>
+      <nav class="nav__links" data-nav aria-label="Primary">
+        <a href="#about">About</a>
+        <a href="#tandem">Launch</a>
+        <a href="#experience">Experience</a>
+        <a href="#projects">Projects</a>
+        <a href="#education">Education</a>
+        <a href="#contact">Contact</a>
+        <a class="nav__flight nav__arch" href="architecture.html">Architecture</a>
+        <a class="nav__flight" href="launch.html">Flight</a>
+        <a class="nav__flight nav__mars" href="mars.html">Mars</a>
+      </nav>
       <div class="nav__actions">
         <button class="nav__cmd" id="cmdkBtn" type="button" aria-label="Open command palette" title="Command palette"><kbd>⌘K</kbd></button>
         <div class="theme-menu" id="themeMenu">
@@ -94,16 +105,24 @@
   </header>
 
   <main id="main">
-    <!-- Hero -->
+    <!-- Hero (pre-populated for immediate first paint, crawlers & no-JS) -->
     <section class="hero" id="top">
       <div class="hero__bg" aria-hidden="true"></div>
       <div class="hero__inner">
-        <p class="hero__eyebrow" data-hero-location></p>
-        <h1 class="hero__name" data-hero-name></h1>
-        <p class="hero__role" data-hero-role></p>
-        <p class="hero__headline" data-hero-headline></p>
-        <div class="hero__cta" data-hero-cta></div>
-        <a class="hero__launch" href="#tandem" data-hero-launch hidden></a>
+        <p class="hero__eyebrow" data-hero-location>Bangkok, Thailand</p>
+        <h1 class="hero__name" data-hero-name>Gun Kaewngarm</h1>
+        <p class="hero__role" data-hero-role>Senior Software Architect</p>
+        <p class="hero__headline" data-hero-headline>I architect identity, cloud and distributed systems that serve millions — and I still ship the code myself.<span class="hero__creds"><span>Bank of Thailand</span><span>Carnegie Mellon MSE</span><span>Ex-Agoda</span><span>Azure Solutions Architect Expert</span></span></p>
+        <div class="hero__cta" data-hero-cta>
+          <a class="btn btn--primary" href="architecture.html">Architecture &amp; ADRs →</a>
+          <a class="btn btn--flight" href="launch.html">▶ Watch Flight Profile</a>
+          <a class="btn btn--ghost" href="https://www.linkedin.com/in/gun-kaewngarm" target="_blank" rel="noopener">LinkedIn</a>
+          <a class="btn btn--ghost" href="https://github.com/givewgun" target="_blank" rel="noopener">GitHub</a>
+        </div>
+        <a class="hero__launch" href="#tandem" data-hero-launch>
+          <span class="hero__launch-tag">New launch</span>
+          <span class="hero__launch-text"><strong>tandem</strong> <span data-tandem-version>v0.5.0</span> · Claude Code + Gemini as one team</span>
+        </a>
       </div>
       <div class="hero__hud" data-hero-hud aria-hidden="true"></div>
       <a href="#about" class="hero__scroll" aria-label="Scroll down">
@@ -111,15 +130,172 @@
       </a>
     </section>
 
-    <!-- Dynamic sections render here -->
-    <div id="sections"></div>
+    <!-- Static semantic fallback for crawlers, ATS parsers & no-JS; hydrated by main.js -->
+    <div id="sections">
+      <section class="section" id="about">
+        <div class="section__head reveal is-visible">
+          <div class="section__kicker" data-index="01">Mission brief</div>
+          <h2 class="section__title">About</h2>
+        </div>
+        <div class="about__grid reveal is-visible">
+          <div class="about__text">
+            <p>I'm a Software &amp; Enterprise Architect at the Bank of Thailand, where I design and deliver enterprise-scale systems that drive innovation and reliability. My work spans identity &amp; access management serving millions of users, DevOps transformation, cloud adoption, and architecture governance.</p>
+            <p>Beyond architecture, I keep my hands on the keyboard — making sure solutions stay practical, efficient, and maintainable across both professional and personal projects. I hold a Master of Software Engineering from Carnegie Mellon University, fully funded through a Bank of Thailand scholarship.</p>
+            <p>Previously, I built scalable, high-performance systems at Agoda — one of Thailand's top tech companies — and led an IoT backend redesign at Adrich (in partnership with CMU) that scaled from 20,000 to 5 million devices.</p>
+          </div>
+          <div class="about__stats">
+            <div class="stat spot"><div class="stat__value">5M+</div><div class="stat__label">IoT devices scaled to</div></div>
+            <div class="stat spot"><div class="stat__value">2M+</div><div class="stat__label">users served by IAM platform</div></div>
+            <div class="stat spot"><div class="stat__value">4.11</div><div class="stat__label">CMU MSE GPA</div></div>
+            <div class="stat spot"><div class="stat__value">6+</div><div class="stat__label">years building software</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--launch" id="tandem">
+        <div class="section__head reveal is-visible">
+          <div class="section__kicker" data-index="02">Latest launch · Nov 2026</div>
+          <h2 class="section__title">Claude Code + Gemini, flying as one team.</h2>
+        </div>
+        <div class="launch">
+          <p class="launch__pitch">tandem is an open-source CLI and MCP bridge that pairs Claude Code with Google Antigravity (Gemini) on the subscriptions you already pay for. No API keys, no runtime dependencies. Either agent can lead, and reviews always go to the other model family.</p>
+          <div class="launch__links">
+            <a class="btn btn--primary" href="https://github.com/givewgun/multi-agents-pc" target="_blank" rel="noopener">GitHub</a>
+            <a class="btn btn--ghost" href="architecture.html#tandem">Architecture (15 ADRs)</a>
+            <a class="btn btn--ghost" href="https://www.npmjs.com/package/tandem-agents" target="_blank" rel="noopener">npm</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="experience">
+        <div class="section__head reveal is-visible">
+          <div class="section__kicker" data-index="03">Flight log</div>
+          <h2 class="section__title">Experience</h2>
+        </div>
+        <div class="timeline">
+          <div class="tl-item tl-item--current reveal is-visible">
+            <div class="tl-card spot">
+              <div class="tl-top">
+                <div><span class="tl-role">Senior Software Architect</span><div class="tl-company">Bank of Thailand</div></div>
+                <span class="tl-period">Jan 2025 — Present</span>
+              </div>
+              <div class="tl-meta">Bangkok, Thailand</div>
+              <ul class="tl-bullets">
+                <li>Designed and implemented the Bank of Thailand's public Identity &amp; Access Management service (iam.bot.or.th) using .NET 10, Docker, SQL Server, and Azure AD B2C — serving 2M+ users.</li>
+                <li>Led DevOps transformation, golden container image standardization, IGA advisory, Copilot engineering governance, ARB frameworks, and zero-trust architecture consulting.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="tl-item reveal is-visible">
+            <div class="tl-card spot">
+              <div class="tl-top">
+                <div><span class="tl-role">Lead Software Engineer</span><div class="tl-company">Adrich, LLC</div></div>
+                <span class="tl-period">Jan 2024 — Dec 2024</span>
+              </div>
+              <div class="tl-meta">Pittsburgh, PA, USA · In partnership with Carnegie Mellon University</div>
+              <ul class="tl-bullets">
+                <li>Directed architectural redesign of an enterprise IoT backend scaling from 20,000 to 5 million concurrent Smart Label devices using Node.js, FastAPI, API Gateway, message queues, formal ADRs, and C on-device ECL compression (-50% payload).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="tl-item reveal is-visible">
+            <div class="tl-card spot">
+              <div class="tl-top">
+                <div><span class="tl-role">Software Engineer &amp; Associate Software Engineer</span><div class="tl-company">Agoda</div></div>
+                <span class="tl-period">Jun 2020 — Jun 2023</span>
+              </div>
+              <div class="tl-meta">Bangkok, Thailand</div>
+              <ul class="tl-bullets">
+                <li>Built data-intensive customer communication microservices (Scala, Akka, Kafka, Spark, Hadoop, Docker, Kubernetes), Campaign Engine, HTML Template Engine, and Kubernetes/Helm containerization.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="projects">
+        <div class="section__head reveal is-visible">
+          <div class="section__kicker" data-index="05">Missions flown</div>
+          <h2 class="section__title">Selected Systems</h2>
+        </div>
+        <div class="projects__grid">
+          <article class="project-card spot project-card--featured reveal is-visible">
+            <h3 class="project-card__title">Legion</h3>
+            <div class="project-card__org">Multi-Agent Consensus Engine · 36 ADRs</div>
+            <p class="project-card__desc">Leaderless multi-agent stock-signal engine over NATS with BFT-flavored weighted aggregation, Pearson redundancy-discounted quorum, anti-herding guards, crash-recoverable emitter, and outbox-decoupled execution.</p>
+            <a class="project-card__more" href="architecture.html#legion">Architecture &amp; 36 ADRs →</a>
+          </article>
+          <article class="project-card spot reveal is-visible">
+            <h3 class="project-card__title">Oculory</h3>
+            <div class="project-card__org">Three-Pillar Observability Platform · Self-hosted</div>
+            <p class="project-card__desc">Unified Grafana observability platform (Prometheus, Loki, Tempo, Alloy) on Oracle Always-Free ARM64 with NATS traceparent stitching and Cloudflare Access ingress.</p>
+            <a class="project-card__more" href="architecture.html#oculory">Architecture &amp; 3-Pillar Stack →</a>
+          </article>
+          <article class="project-card spot reveal is-visible">
+            <h3 class="project-card__title">Horizon</h3>
+            <div class="project-card__org">Resilient Space &amp; Earth Telemetry · 6 ADRs</div>
+            <p class="project-card__desc">Single-process Fastify + React/CesiumJS dashboard with single-flight TTL caching, last-known-good stale fallback, and honest freshness badges across 7+ third-party APIs.</p>
+            <a class="project-card__more" href="architecture.html#horizon">Architecture &amp; 6 ADRs →</a>
+          </article>
+          <article class="project-card spot reveal is-visible">
+            <h3 class="project-card__title">GunVest</h3>
+            <div class="project-card__org">Investment Command Center · 10 ADRs</div>
+            <p class="project-card__desc">Full-stack investment command center aggregating Finnhub, StockTwits, Reddit, GDELT, and Google Gemini with PostgreSQL and Socket.io.</p>
+            <a class="project-card__more" href="https://github.com/givewgun/gunvest-public/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">Architecture &amp; 10 ADRs →</a>
+          </article>
+        </div>
+        <div class="arch-callout spot reveal is-visible">
+          <div>
+            <p class="arch-callout__kicker">Architecture &amp; Design Records</p>
+            <p class="arch-callout__text">System diagrams, 65+ public ADRs, rejected alternatives, and failure-mode engineering across Legion, tandem, Oculory, and Horizon.</p>
+          </div>
+          <a class="btn btn--primary" href="architecture.html">Read case studies →</a>
+        </div>
+      </section>
+
+      <section class="section" id="education">
+        <div class="section__head reveal is-visible">
+          <div class="section__kicker" data-index="08">Training</div>
+          <h2 class="section__title">Education &amp; Credentials</h2>
+        </div>
+        <div class="card-grid">
+          <div class="info-card spot reveal is-visible">
+            <div class="info-card__title">Carnegie Mellon University</div>
+            <div class="info-card__sub">Master of Software Engineering · GPA 4.11</div>
+            <div class="info-card__meta">Aug 2023 – Dec 2024 · Pittsburgh, PA, USA · Bank of Thailand Full-Ride Scholarship</div>
+          </div>
+          <div class="info-card spot reveal is-visible">
+            <div class="info-card__title">Chulalongkorn University</div>
+            <div class="info-card__sub">B.Eng. Computer Engineering · GPA 3.65</div>
+            <div class="info-card__meta">2016 – 2020 · Bangkok, Thailand · Microsoft Certified: Azure Solutions Architect Expert</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section contact" id="contact">
+        <div class="contact__panel spot reveal is-visible">
+          <div class="section__kicker contact__kicker" data-index="10">Open channel</div>
+          <h2 class="contact__title">Let's build something.</h2>
+          <p class="contact__text">Open to architecture, engineering, and consulting conversations. The fastest way to reach me is LinkedIn or email.</p>
+          <div class="contact__links">
+            <a class="btn btn--ghost" href="https://www.linkedin.com/in/gun-kaewngarm" target="_blank" rel="noopener">LinkedIn</a>
+            <a class="btn btn--ghost" href="https://github.com/givewgun" target="_blank" rel="noopener">GitHub</a>
+            <a class="btn btn--ghost" href="mailto:gun.kaewngarm@gmail.com">Email</a>
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <footer class="footer">
     <div class="footer__inner">
       <div class="footer__brand">
-        <p class="footer__name" data-footer-name></p>
-        <div class="footer__links" data-footer-links></div>
+        <p class="footer__name" data-footer-name>Gun Kaewngarm · Senior Software Architect</p>
+        <div class="footer__links" data-footer-links>
+          <a href="https://www.linkedin.com/in/gun-kaewngarm" target="_blank" rel="noopener" aria-label="LinkedIn">in</a>
+          <a href="https://github.com/givewgun" target="_blank" rel="noopener" aria-label="GitHub">gh</a>
+          <a href="mailto:gun.kaewngarm@gmail.com" aria-label="Email">@</a>
+        </div>
         <p class="footer__note">Designed &amp; engineered by Gun with Claude and Gemini working <a href="#tandem">in tandem</a>. Plain HTML, CSS &amp; JS — no build step. Press <kbd>⌘K</kbd> to explore, or try the Konami code.</p>
         <p class="footer__credit">Earth imagery: NASA Blue Marble &amp; Black Marble (public domain). Drag the globe to spin it.</p>
       </div>

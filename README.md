@@ -69,10 +69,12 @@ Cloudflare DNS add a `CNAME` record for `givewgun.com` → `<user>.github.io`
 ## Structure
 
 ```
-index.html                         # markup shell (mostly empty placeholders)
+index.html                         # markup shell with pre-populated static fallback for crawlers/no-JS
+architecture.html                  # Architecture & Design Records (4 systems, inline SVG diagrams, 65+ ADR links)
 launch.html                        # Flight Profile (career launch + live manifest)
 mars.html                          # Mars mission planner: live Earth–Mars transfer window from real orbital elements, Hohmann transfer animation, and a playable propulsive landing
 assets/css/styles.css              # design system, layout, every section, theme tokens
+assets/css/architecture.css        # Architecture & Design Records layout and SVG diagram tokens
 assets/css/space-scene.css         # WebGL stage
 assets/css/mission-ui.css          # command palette, toasts, ISS radar
 assets/css/launch.css              # Flight Profile HUD, countdown, mission log
@@ -86,9 +88,12 @@ assets/js/mission-ui.js            # ⌘K palette, easter eggs, ISS ground-track
 assets/js/launch-flight.js         # WebGL rocket launch, telemetry HUD, booster PiP
 assets/js/launch-manifest.js       # live upcoming launches, last-launch replay & footer ticker
 assets/js/mars.js                  # Mars mission planner: live Earth–Mars transfer window from real orbital elements, Hohmann transfer animation, and a playable propulsive landing
-assets/js/resume.js                # generates the résumé PDF on the fly from data.js
-assets/js/arcane.js                # AI-generated background for the opt-in Arcane theme
+assets/js/resume.js                # generates a tight 2-page résumé PDF on the fly from data.js
+assets/js/arcane.js                # AI-generated background + RPG wording for the opt-in Arcane theme
 assets/vendor/three.module.min.js  # Three.js r170, self-hosted (no CDN)
+worker/guard.js                    # origin enforcement (no ACAO: *) + per-IP rate limiting for Gemini routes
+worker/arcane-image.js             # /api/arcane-image (hardened: server-side scene allowlist only)
+worker/arcane-text.js              # /api/arcane-text (hardened: server-owned bio & section prompts only)
 worker/launches.js                 # /api/launches edge-cached Launch Library 2 proxy
 CNAME                              # custom domain for GitHub Pages
 ```

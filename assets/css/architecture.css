@@ -1,0 +1,455 @@
+/* ==========================================================================
+   architecture.css — Architecture & Design Records showcase
+   Extends styles.css Deep Space tokens (dark & light themes).
+   ========================================================================== */
+
+body.arch-page {
+  background: var(--bg);
+  background-image:
+    radial-gradient(70% 45% at 15% -5%, var(--hero-glow-1), transparent 68%),
+    radial-gradient(50% 35% at 90% 8%, var(--hero-glow-2), transparent 65%);
+  background-attachment: fixed;
+}
+
+/* ---- Hero ---------------------------------------------------------------- */
+.arch-hero {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: clamp(7rem, 12vw, 9.5rem) var(--gutter) clamp(2.5rem, 5vw, 4rem);
+}
+.arch-hero__kicker {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.arch-hero__kicker::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 12px var(--ok);
+}
+.arch-hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6.2vw, 4.4rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+  margin-top: 1rem;
+  max-width: 820px;
+}
+.arch-hero__lede {
+  color: var(--text-soft);
+  font-size: clamp(1rem, 1.5vw, 1.14rem);
+  line-height: 1.65;
+  margin-top: 1.25rem;
+  max-width: 740px;
+}
+.arch-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--glass);
+  overflow: hidden;
+}
+.arch-stat {
+  padding: 1.15rem 1.3rem;
+}
+.arch-stat + .arch-stat {
+  border-left: 1px solid var(--border);
+}
+.arch-stat b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 2.6vw, 1.95rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.arch-stat:nth-child(odd) b { color: var(--accent); }
+.arch-stat:nth-child(even) b { color: var(--accent-2); }
+.arch-stat span {
+  display: block;
+  margin-top: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+@media (max-width: 760px) {
+  .arch-hero__stats { grid-template-columns: repeat(2, 1fr); }
+  .arch-stat:nth-child(3) { border-left: 0; }
+  .arch-stat:nth-child(n + 3) { border-top: 1px solid var(--border); }
+}
+
+/* ---- Jump bar ------------------------------------------------------------ */
+.arch-toc {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--gutter) 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+.arch-toc a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  color: var(--text-soft);
+  transition: var(--transition);
+}
+.arch-toc a em {
+  font-style: normal;
+  color: var(--accent);
+}
+.arch-toc a:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+/* ---- Case Study Section -------------------------------------------------- */
+.case {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: clamp(2.8rem, 6vw, 4.5rem) var(--gutter);
+  border-top: 1px solid var(--border);
+}
+.case__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 1.8rem;
+}
+.case__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.6rem;
+}
+.case__num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.case__pill {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-2) 35%, var(--border));
+  background: var(--accent-2-soft);
+  color: var(--accent-2);
+}
+.case__pill--ok {
+  border-color: color-mix(in srgb, var(--ok) 35%, var(--border));
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  color: var(--ok);
+}
+.case__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.85rem, 3.8vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+.case__subtitle {
+  color: var(--text-soft);
+  font-size: 1.02rem;
+  margin-top: 0.55rem;
+  max-width: 700px;
+}
+.case__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+/* ---- SVG Diagram Frame --------------------------------------------------- */
+.diagram {
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.6rem;
+}
+.diagram__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--glass-strong);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+.diagram__dots {
+  display: inline-flex;
+  gap: 6px;
+}
+.diagram__dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.diagram__canvas {
+  padding: clamp(0.85rem, 2.5vw, 1.5rem);
+  overflow-x: auto;
+}
+.diagram svg {
+  display: block;
+  width: 100%;
+  min-width: 680px;
+  height: auto;
+  font-family: var(--font-mono);
+}
+.svg-box {
+  fill: var(--bg-elev);
+  stroke: var(--border-strong);
+  stroke-width: 1.25;
+}
+.svg-box--accent {
+  fill: color-mix(in srgb, var(--accent) 12%, var(--bg-elev));
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.svg-box--amber {
+  fill: color-mix(in srgb, var(--accent-2) 12%, var(--bg-elev));
+  stroke: var(--accent-2);
+  stroke-width: 1.5;
+}
+.svg-box--ok {
+  fill: color-mix(in srgb, var(--ok) 12%, var(--bg-elev));
+  stroke: var(--ok);
+  stroke-width: 1.5;
+}
+.svg-group {
+  fill: color-mix(in srgb, var(--bg-soft) 70%, transparent);
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
+}
+.svg-title {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.svg-sub {
+  fill: var(--text-dim);
+  font-size: 10px;
+}
+.svg-label {
+  fill: var(--text-soft);
+  font-size: 9.5px;
+}
+.svg-line {
+  fill: none;
+  stroke: var(--text-dim);
+  stroke-width: 1.4;
+}
+.svg-line--accent {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+}
+.svg-line--amber {
+  stroke: var(--accent-2);
+  stroke-width: 1.6;
+}
+.svg-line--ok {
+  stroke: var(--ok);
+  stroke-width: 1.6;
+}
+.svg-line--dash {
+  stroke-dasharray: 4 3;
+}
+
+/* ---- Detail Cards Grid --------------------------------------------------- */
+.case__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 820px) {
+  .case__grid { grid-template-columns: 1fr; }
+}
+.case-card {
+  padding: 1.4rem 1.5rem;
+}
+.case-card__label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.85rem;
+}
+.case-card--warn .case-card__label { color: var(--accent-2); }
+.case-card--ok .case-card__label { color: var(--ok); }
+.case-card p {
+  color: var(--text-soft);
+  font-size: 0.93rem;
+  line-height: 1.6;
+}
+.case-card ul {
+  display: grid;
+  gap: 0.65rem;
+}
+.case-card li {
+  position: relative;
+  padding-left: 1.15rem;
+  color: var(--text-soft);
+  font-size: 0.91rem;
+  line-height: 1.55;
+}
+.case-card li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.68em;
+  width: 6px;
+  height: 1px;
+  background: var(--accent);
+}
+.case-card--warn li::before { background: var(--accent-2); }
+.case-card--ok li::before { background: var(--ok); }
+.case-card strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.case-card code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* ---- ADR Chips ----------------------------------------------------------- */
+.adr-list {
+  display: grid;
+  gap: 0.55rem;
+}
+.adr-link {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 45%, transparent);
+  font-size: 0.88rem;
+  color: var(--text-soft);
+  transition: var(--transition);
+}
+.adr-link:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+.adr-link b {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+}
+.adr-link span {
+  flex: 1;
+}
+.adr-link em {
+  flex: none;
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* ---- NDA Enterprise Section ---------------------------------------------- */
+.nda-box {
+  padding: clamp(1.8rem, 4vw, 2.6rem);
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 2rem;
+  align-items: center;
+}
+@media (max-width: 820px) {
+  .nda-box { grid-template-columns: 1fr; }
+}
+.nda-box__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  margin-top: 0.5rem;
+}
+.nda-box__text {
+  color: var(--text-soft);
+  font-size: 0.96rem;
+  margin-top: 0.85rem;
+  line-height: 1.65;
+}
+.nda-domains {
+  display: grid;
+  gap: 0.75rem;
+}
+.nda-domain {
+  padding: 0.95rem 1.1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 45%, transparent);
+}
+.nda-domain b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  color: var(--text);
+}
+.nda-domain span {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-top: 0.25rem;
+}
+.arch-foot {
+  border-top: 1px solid var(--border);
+  padding: 2rem var(--gutter) 3rem;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+.arch-foot a { color: var(--text-soft); }
+.arch-foot a:hover { color: var(--accent); }

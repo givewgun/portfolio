@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Architecture &amp; Design Records — Gun Kaewngarm</title>
+  <meta name="description" content="System architecture diagrams, Architecture Decision Records (ADRs), rejected alternatives, and failure-mode engineering across Gun Kaewngarm's open-source systems: Legion, tandem, Oculory, and Horizon." />
+  <meta name="author" content="Gun Kaewngarm" />
+  <meta name="theme-color" content="#05070d" />
+  <meta name="color-scheme" content="dark light" />
+
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (t !== "dark" && t !== "light") {
+          t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Architecture &amp; Design Records — Gun Kaewngarm" />
+  <meta property="og:description" content="Four documented open-source systems with 65+ public ADRs, system diagrams, trade-offs, and failure-mode mitigations." />
+  <meta property="og:url" content="https://givewgun.com/architecture.html" />
+  <meta property="og:image" content="https://givewgun.com/assets/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://givewgun.com/assets/og-image.png" />
+
+  <link rel="canonical" href="https://givewgun.com/architecture.html" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/architecture.css" />
+</head>
+<body class="arch-page">
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <header class="nav is-scrolled" id="nav">
+    <div class="nav__inner">
+      <a href="index.html" class="nav__logo" aria-label="Back to portfolio">
+        <span class="nav__logo-mark">GK</span>
+        <span class="nav__logo-text">Gun Kaewngarm</span>
+      </a>
+      <nav class="nav__links" id="archNav" aria-label="Primary">
+        <a href="index.html">Portfolio</a>
+        <a href="#legion">Legion</a>
+        <a href="#tandem">tandem</a>
+        <a href="#oculory">Oculory</a>
+        <a href="#horizon">Horizon</a>
+        <a href="#nda">Enterprise NDA</a>
+        <a class="nav__flight" href="launch.html">Flight</a>
+        <a class="nav__flight nav__mars" href="mars.html">Mars</a>
+      </nav>
+      <div class="nav__actions">
+        <button class="theme-toggle" id="archThemeToggle" type="button" aria-label="Toggle dark or light theme" title="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/></svg>
+        </button>
+        <button class="nav__burger" id="archBurger" type="button" aria-label="Open menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Hero -->
+    <section class="arch-hero">
+      <p class="arch-hero__kicker">Systems · Trade-offs · Public ADRs</p>
+      <h1 class="arch-hero__title">Architecture &amp; Design Records</h1>
+      <p class="arch-hero__lede">
+        Enterprise architecture work at the Bank of Thailand and Adrich is under NDA. Rather than hand-waving behind bullet points,
+        here are four open-source systems I designed, built, and documented in public — with system diagrams, Architecture Decision
+        Records (ADRs), rejected alternatives, and the failure modes they are engineered to survive.
+      </p>
+      <div class="arch-hero__stats">
+        <div class="arch-stat"><b>4</b><span>Documented systems</span></div>
+        <div class="arch-stat"><b>67</b><span>Public ADRs across repos</span></div>
+        <div class="arch-stat"><b>0</b><span>NDA details exposed</span></div>
+        <div class="arch-stat"><b>100%</b><span>Verifiable on GitHub</span></div>
+      </div>
+    </section>
+
+    <nav class="arch-toc" aria-label="Case studies">
+      <a href="#legion"><em>01</em> Legion · Leaderless Consensus (36 ADRs)</a>
+      <a href="#tandem"><em>02</em> tandem · Zero-Dep Agent Bridge (15 ADRs)</a>
+      <a href="#oculory"><em>03</em> Oculory · 3-Pillar Observability</a>
+      <a href="#horizon"><em>04</em> Horizon · Resilient Telemetry (6 ADRs)</a>
+      <a href="#nda"><em>05</em> Enterprise NDA Scope</a>
+    </nav>
+
+    <!-- =================================================================== -->
+    <!-- 01. LEGION                                                          -->
+    <!-- =================================================================== -->
+    <article class="case" id="legion">
+      <div class="case__head">
+        <div>
+          <div class="case__meta">
+            <span class="case__num">Case Study 01</span>
+            <span class="case__pill">36 Public ADRs</span>
+            <span class="case__pill case__pill--ok">Distributed Systems · NATS</span>
+          </div>
+          <h2 class="case__title">Legion — Leaderless Multi-Agent Consensus Engine</h2>
+          <p class="case__subtitle">
+            Reproducible multi-LLM signal consensus over a NATS message bus with no prime decider, statistical anti-herding &amp;
+            correlation guards, crash-recoverable state replay, and an outbox-decoupled broker execution pipeline.
+          </p>
+        </div>
+        <div class="case__links">
+          <a class="btn btn--primary" href="https://github.com/givewgun/legion/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md ↗</a>
+          <a class="btn btn--ghost" href="https://github.com/givewgun/legion/tree/main/docs/adr" target="_blank" rel="noopener">Browse 36 ADRs ↗</a>
+        </div>
+      </div>
+
+      <figure class="diagram">
+        <div class="diagram__bar">
+          <span class="diagram__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>legion · runtime topology &amp; outbox execution flow</span>
+        </div>
+        <div class="diagram__canvas">
+          <svg viewBox="0 0 920 315" role="img" aria-label="Legion architecture diagram: Scheduler and API publish cycles over NATS to four independent voting agents and a deterministic risk node, feeding a crash-recoverable emitter that persists votes and writes pending order intents to a transactional outbox drained by an idempotent broker executor.">
+            <defs>
+              <marker id="arr-l" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--text-dim)" />
+              </marker>
+              <marker id="arr-l-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent)" />
+              </marker>
+              <marker id="arr-l-o" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent-2)" />
+              </marker>
+              <marker id="arr-l-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--ok)" />
+              </marker>
+            </defs>
+
+            <!-- Triggers -->
+            <rect class="svg-box" x="16" y="34" width="136" height="50" rx="8" />
+            <text class="svg-title" x="84" y="56" text-anchor="middle">Scheduler / API</text>
+            <text class="svg-sub" x="84" y="72" text-anchor="middle">cron 2x/day · POST</text>
+
+            <!-- NATS Bus -->
+            <rect class="svg-box svg-box--accent" x="190" y="24" width="144" height="218" rx="10" />
+            <text class="svg-title" x="262" y="50" text-anchor="middle">NATS Message Bus</text>
+            <text class="svg-sub" x="262" y="68" text-anchor="middle">W3C traceparent</text>
+            <text class="svg-sub" x="262" y="96" text-anchor="middle">legion.cycle.TICKER</text>
+            <text class="svg-sub" x="262" y="138" text-anchor="middle">legion.vote.*.*</text>
+            <text class="svg-sub" x="262" y="160" text-anchor="middle">legion.constraint.*</text>
+            <text class="svg-sub" x="262" y="205" text-anchor="middle">legion.consensus.*</text>
+
+            <!-- Voting Panel -->
+            <rect class="svg-group" x="378" y="18" width="184" height="172" rx="10" />
+            <text class="svg-sub" x="390" y="36">INDEPENDENT WORKERS (×5)</text>
+            <rect class="svg-box" x="390" y="46" width="160" height="32" rx="6" />
+            <text class="svg-title" x="470" y="66" text-anchor="middle">4× LLM Agents</text>
+            <rect class="svg-box" x="390" y="88" width="160" height="32" rx="6" />
+            <text class="svg-title" x="470" y="108" text-anchor="middle">Risk Node (determ.)</text>
+            <rect class="svg-box" x="390" y="132" width="160" height="46" rx="6" />
+            <text class="svg-title" x="470" y="152" text-anchor="middle">Ollama + GunVest</text>
+            <text class="svg-sub" x="470" y="168" text-anchor="middle">serial inference · data</text>
+
+            <!-- Emitter -->
+            <rect class="svg-box svg-box--amber" x="378" y="212" width="184" height="84" rx="10" />
+            <text class="svg-title" x="470" y="236" text-anchor="middle">Emitter (Aggregator)</text>
+            <text class="svg-sub" x="470" y="254" text-anchor="middle">κ quorum · θ_v dispersion</text>
+            <text class="svg-sub" x="470" y="270" text-anchor="middle">anti-herding · corr mass</text>
+            <text class="svg-sub" x="470" y="286" text-anchor="middle">crash-replay recovery</text>
+
+            <!-- Postgres + Outbox -->
+            <rect class="svg-box svg-box--ok" x="606" y="142" width="144" height="66" rx="10" />
+            <text class="svg-title" x="678" y="168" text-anchor="middle">PostgreSQL</text>
+            <text class="svg-sub" x="678" y="184" text-anchor="middle">legion.order_intents</text>
+            <text class="svg-sub" x="678" y="198" text-anchor="middle">(outbox + audit)</text>
+
+            <!-- Executor -->
+            <rect class="svg-box" x="606" y="232" width="144" height="62" rx="10" />
+            <text class="svg-title" x="678" y="256" text-anchor="middle">Executor Loop</text>
+            <text class="svg-sub" x="678" y="272" text-anchor="middle">kill-switch · cOID</text>
+            <text class="svg-sub" x="678" y="286" text-anchor="middle">idempotent sizing</text>
+
+            <!-- Brokers + Telegram -->
+            <rect class="svg-box" x="784" y="142" width="120" height="50" rx="8" />
+            <text class="svg-title" x="844" y="164" text-anchor="middle">Telegram</text>
+            <text class="svg-sub" x="844" y="180" text-anchor="middle">signal alerts</text>
+
+            <rect class="svg-box svg-box--accent" x="784" y="220" width="120" height="74" rx="8" />
+            <text class="svg-title" x="844" y="244" text-anchor="middle">Brokers</text>
+            <text class="svg-sub" x="844" y="262" text-anchor="middle">IBKR (IBeam)</text>
+            <text class="svg-sub" x="844" y="278" text-anchor="middle">Webull HMAC</text>
+
+            <!-- Arrows -->
+            <path class="svg-line svg-line--accent" d="M 152 59 L 188 59" marker-end="url(#arr-l-a)" />
+            <path class="svg-line svg-line--accent" d="M 334 62 L 388 62" marker-end="url(#arr-l-a)" />
+            <path class="svg-line svg-line--accent" d="M 334 104 L 388 104" marker-end="url(#arr-l-a)" />
+            <path class="svg-line" d="M 390 120 L 356 120 L 356 232 L 376 232" marker-end="url(#arr-l)" />
+            <path class="svg-line svg-line--amber svg-line--dash" d="M 378 260 L 262 260 L 262 244" marker-end="url(#arr-l-o)" />
+            <text class="svg-label" x="268" y="275">round+1 dissent</text>
+            <path class="svg-line svg-line--ok" d="M 562 238 L 584 238 L 584 175 L 604 175" marker-end="url(#arr-l-g)" />
+            <path class="svg-line" d="M 678 208 L 678 230" marker-end="url(#arr-l)" />
+            <path class="svg-line" d="M 750 167 L 782 167" marker-end="url(#arr-l)" />
+            <path class="svg-line svg-line--accent" d="M 750 262 L 782 262" marker-end="url(#arr-l-a)" />
+          </svg>
+        </div>
+      </figure>
+
+      <div class="case__grid">
+        <div class="case-card spot">
+          <div class="case-card__label">Problem &amp; Constraints</div>
+          <p>
+            Single-LLM trade opinions hallucinate and shift between runs. Legion coordinates 4 specialized LLM voters
+            (<code>technical</code>, <code>news</code>, <code>social</code>, <code>contrarian</code>) plus a deterministic risk node on a
+            single Oracle ARM64 VM with local Ollama inference — requiring <strong>deterministic, reproducible consensus</strong>
+            with no single point of decision and zero chance of a slow broker blocking signal emission.
+          </p>
+        </div>
+
+        <div class="case-card spot">
+          <div class="case-card__label">Selected ADRs (Verified on GitHub)</div>
+          <div class="adr-list">
+            <a class="adr-link" href="https://github.com/givewgun/legion/blob/main/docs/adr/0001-consensus-protocol.md" target="_blank" rel="noopener">
+              <b>ADR-0001</b><span>BFT-flavored leaderless weighted aggregation (κ quorum + θ_v dispersion)</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/legion/blob/main/docs/adr/0015-correlated-agent-quorum.md" target="_blank" rel="noopener">
+              <b>ADR-0015</b><span>Redundancy-discounted quorum via Pearson correlation mass</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/legion/blob/main/docs/adr/0016-anti-herding-guard.md" target="_blank" rel="noopener">
+              <b>ADR-0016</b><span>Anti-herding guard requiring round-1 backing on later-round consensus</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/legion/blob/main/docs/adr/0024-crash-recoverable-emitter.md" target="_blank" rel="noopener">
+              <b>ADR-0024</b><span>Crash-recoverable emitter with pending-vote replay</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/legion/blob/main/docs/adr/0035-ibkr-paper-execution.md" target="_blank" rel="noopener">
+              <b>ADR-0035</b><span>Transactional outbox + duplicate-cOID idempotent broker execution</span><em>↗</em>
+            </a>
+          </div>
+        </div>
+
+        <div class="case-card case-card--warn spot">
+          <div class="case-card__label">Rejected Alternatives</div>
+          <ul>
+            <li><strong>Chairman / arbiter LLM:</strong> Rejected — creates a non-reproducible single point of failure where one prompt swing overrides the panel.</li>
+            <li><strong>Plain weighted average:</strong> Rejected — a high-conviction outlier drags the mean with no explicit gate for "we disagree too much to act."</li>
+            <li><strong>Direct broker calls in emitter:</strong> Rejected — broker auth/network stalls would block cycle finalization and Telegram delivery; solved via <code>legion.order_intents</code> outbox.</li>
+          </ul>
+        </div>
+
+        <div class="case-card case-card--ok spot">
+          <div class="case-card__label">Failure Modes &amp; Mitigations</div>
+          <ul>
+            <li><strong>Echo-chamber voting:</strong> Pairwise Pearson correlation discounts co-moving agents (<code>mass_i = 1 + Σ max(0, corr)</code>) so correlated echoes collapse toward 1 independent voice.</li>
+            <li><strong>Mid-round process crash:</strong> Emitter persists votes before aggregating; on restart it rebuilds buffers, restores round-1 priors, and replays any stranded transition.</li>
+            <li><strong>Duplicate orders on retry:</strong> Client Order ID (<code>cOID</code>) equals the intent ID, relying on broker duplicate-<code>cOID</code> rejection for safe crash recovery.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- =================================================================== -->
+    <!-- 02. TANDEM                                                          -->
+    <!-- =================================================================== -->
+    <article class="case" id="tandem">
+      <div class="case__head">
+        <div>
+          <div class="case__meta">
+            <span class="case__num">Case Study 02</span>
+            <span class="case__pill">15 Public ADRs</span>
+            <span class="case__pill case__pill--ok">Zero Deps · MCP · npm</span>
+          </div>
+          <h2 class="case__title">tandem — Cross-Model Agent Orchestration</h2>
+          <p class="case__subtitle">
+            An open-source CLI and hand-rolled MCP server pairing Claude Code with Google Antigravity (Gemini) on flat-rate
+            subscriptions — with zero API keys, zero runtime dependencies, and live 5h/weekly quota routing.
+          </p>
+        </div>
+        <div class="case__links">
+          <a class="btn btn--primary" href="https://github.com/givewgun/multi-agents-pc/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md ↗</a>
+          <a class="btn btn--ghost" href="https://github.com/givewgun/multi-agents-pc/tree/main/docs/adr" target="_blank" rel="noopener">Browse 15 ADRs ↗</a>
+        </div>
+      </div>
+
+      <figure class="diagram">
+        <div class="diagram__bar">
+          <span class="diagram__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>tandem · asymmetric MCP bridge, policy router &amp; plan-window ledger</span>
+        </div>
+        <div class="diagram__canvas">
+          <svg viewBox="0 0 920 265" role="img" aria-label="tandem architecture diagram: Lead agent communicates over stdio MCP or CLI to the zero-token policy router, which dispatches headless claude or agy CLIs via argv and stdin, reconciles Stop hooks and native transcripts into a local JSONL ledger, and feeds real 5-hour and weekly plan windows back into routing and the local dashboard.">
+            <defs>
+              <marker id="arr-t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--text-dim)" />
+              </marker>
+              <marker id="arr-t-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent)" />
+              </marker>
+              <marker id="arr-t-o" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent-2)" />
+              </marker>
+            </defs>
+
+            <rect class="svg-box svg-box--accent" x="18" y="34" width="166" height="68" rx="10" />
+            <text class="svg-title" x="101" y="60" text-anchor="middle">Lead Agent / User</text>
+            <text class="svg-sub" x="101" y="78" text-anchor="middle">Claude Code or Antigravity</text>
+            <text class="svg-sub" x="101" y="92" text-anchor="middle">(classifies task category)</text>
+
+            <rect class="svg-box" x="228" y="34" width="166" height="68" rx="10" />
+            <text class="svg-title" x="311" y="58" text-anchor="middle">MCP / CLI Entry</text>
+            <text class="svg-sub" x="311" y="75" text-anchor="middle">hand-rolled JSON-RPC</text>
+            <text class="svg-sub" x="311" y="90" text-anchor="middle">--expose partner only</text>
+
+            <rect class="svg-box svg-box--amber" x="438" y="34" width="178" height="68" rx="10" />
+            <text class="svg-title" x="527" y="58" text-anchor="middle">Policy Router (0 tok)</text>
+            <text class="svg-sub" x="527" y="75" text-anchor="middle">pins &gt; 5h/7d budget &gt; rules</text>
+            <text class="svg-sub" x="527" y="90" text-anchor="middle">no-self-review invariant</text>
+
+            <rect class="svg-box" x="662" y="18" width="238" height="44" rx="8" />
+            <text class="svg-title" x="781" y="37" text-anchor="middle">claude -p (stdin, stream-json)</text>
+            <text class="svg-sub" x="781" y="53" text-anchor="middle">emits rate_limit_event windows</text>
+
+            <rect class="svg-box" x="662" y="74" width="238" height="44" rx="8" />
+            <text class="svg-title" x="781" y="93" text-anchor="middle">agy -p (argv | stream-json)</text>
+            <text class="svg-sub" x="781" y="109" text-anchor="middle">free agy /usage snapshots</text>
+
+            <rect class="svg-box svg-box--ok" x="438" y="164" width="212" height="72" rx="10" />
+            <text class="svg-title" x="544" y="188" text-anchor="middle">Ledger + Usage Store</text>
+            <text class="svg-sub" x="544" y="206" text-anchor="middle">~/.tandem/ledger.jsonl</text>
+            <text class="svg-sub" x="544" y="222" text-anchor="middle">append-only · no prompt copies</text>
+
+            <rect class="svg-box" x="18" y="164" width="212" height="72" rx="10" />
+            <text class="svg-title" x="124" y="188" text-anchor="middle">Stop &amp; Prompt Hooks</text>
+            <text class="svg-sub" x="124" y="206" text-anchor="middle">reconciles native transcripts</text>
+            <text class="svg-sub" x="124" y="222" text-anchor="middle">TANDEM_MANAGED dedupe</text>
+
+            <rect class="svg-box" x="698" y="164" width="202" height="72" rx="10" />
+            <text class="svg-title" x="799" y="188" text-anchor="middle">Local Dashboard</text>
+            <text class="svg-sub" x="799" y="206" text-anchor="middle">127.0.0.1 static HTML</text>
+            <text class="svg-sub" x="799" y="222" text-anchor="middle">Host-header guarded</text>
+
+            <path class="svg-line svg-line--accent" d="M 184 68 L 226 68" marker-end="url(#arr-t-a)" />
+            <path class="svg-line svg-line--accent" d="M 394 68 L 436 68" marker-end="url(#arr-t-a)" />
+            <path class="svg-line svg-line--amber" d="M 616 54 L 660 40" marker-end="url(#arr-t-o)" />
+            <path class="svg-line svg-line--amber" d="M 616 82 L 660 96" marker-end="url(#arr-t-o)" />
+            <path class="svg-line" d="M 781 118 L 781 138 L 570 138 L 570 162" marker-end="url(#arr-t)" />
+            <path class="svg-line svg-line--amber svg-line--dash" d="M 516 164 L 516 104" marker-end="url(#arr-t-o)" />
+            <text class="svg-label" x="404" y="138">live 5h/7d budget</text>
+            <path class="svg-line" d="M 230 200 L 436 200" marker-end="url(#arr-t)" />
+            <path class="svg-line" d="M 650 200 L 696 200" marker-end="url(#arr-t)" />
+          </svg>
+        </div>
+      </figure>
+
+      <div class="case__grid">
+        <div class="case-card spot">
+          <div class="case-card__label">Problem &amp; Constraints</div>
+          <p>
+            Developers already pay for flat-rate Claude and Gemini subscriptions, yet cross-model tooling usually demands paid API
+            keys, loses each CLI's native tools, and lets an agent rubber-stamp its own bugs. <code>tandem</code> had to run identically
+            on Windows, macOS, and Linux with <strong>zero runtime dependencies</strong>, zero stored API keys, and truthful plan-window metering.
+          </p>
+        </div>
+
+        <div class="case-card spot">
+          <div class="case-card__label">Selected ADRs (Verified on GitHub)</div>
+          <div class="adr-list">
+            <a class="adr-link" href="https://github.com/givewgun/multi-agents-pc/blob/main/docs/adr/0001-node-zero-deps.md" target="_blank" rel="noopener">
+              <b>ADR-0001</b><span>Node ESM with zero runtime dependencies &amp; argv-only process spawning</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/multi-agents-pc/blob/main/docs/adr/0002-headless-cli-transport.md" target="_blank" rel="noopener">
+              <b>ADR-0002</b><span>Drive headless agent CLIs, not raw APIs (subscriptions, no keys)</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/multi-agents-pc/blob/main/docs/adr/0007-mcp-expose-other-agent.md" target="_blank" rel="noopener">
+              <b>ADR-0007</b><span>Hand-rolled MCP server exposing only the partner model family</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/multi-agents-pc/blob/main/docs/adr/0009-plan-window-budgets.md" target="_blank" rel="noopener">
+              <b>ADR-0009</b><span>Route on live 5-hour &amp; weekly plan windows, not fake USD budgets</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/multi-agents-pc/blob/main/docs/adr/0011-native-transcripts-and-hooks.md" target="_blank" rel="noopener">
+              <b>ADR-0011</b><span>Native transcript reading + Stop hooks with TANDEM_MANAGED dedupe</span><em>↗</em>
+            </a>
+          </div>
+        </div>
+
+        <div class="case-card case-card--warn spot">
+          <div class="case-card__label">Rejected Alternatives</div>
+          <ul>
+            <li><strong>Model REST APIs:</strong> Rejected — double-bills users on top of existing subscriptions and strips away native codebase tools.</li>
+            <li><strong>Dollar-based weekly limits:</strong> Rejected — flat-rate plans throttle on rolling 5h/weekly utilization windows, not API dollars.</li>
+            <li><strong>Shell-string process invocation:</strong> Rejected — Windows quoting and injection hazards; <code>src/proc.js</code> spawns argv arrays with explicit timeout + tree kill.</li>
+          </ul>
+        </div>
+
+        <div class="case-card case-card--ok spot">
+          <div class="case-card__label">Failure Modes &amp; Verified Outcomes</div>
+          <ul>
+            <li><strong>Self-review blind spots:</strong> Asymmetric MCP exposure makes self-review structurally impossible; a cold cross-model review caught <strong>5 real release bugs</strong>, including a DNS-rebinding hole in the local dashboard.</li>
+            <li><strong>Large prompt truncation on Windows:</strong> Prompts &gt;24k chars switch from argv to <code>stream-json</code> stdin without writing temp files to disk (ADR-0004).</li>
+            <li><strong>Double-counted token telemetry:</strong> Managed child sessions carry <code>TANDEM_MANAGED</code> so Stop hooks skip them while still capturing direct interactive work.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- =================================================================== -->
+    <!-- 03. OCULORY                                                         -->
+    <!-- =================================================================== -->
+    <article class="case" id="oculory">
+      <div class="case__head">
+        <div>
+          <div class="case__meta">
+            <span class="case__num">Case Study 03</span>
+            <span class="case__pill">ARM64 · $0/mo Runtime</span>
+            <span class="case__pill case__pill--ok">Observability · Zero-Trust Ingress</span>
+          </div>
+          <h2 class="case__title">Oculory — Three-Pillar Self-Hosted Observability</h2>
+          <p class="case__subtitle">
+            Unified Prometheus metrics, Loki logs, and Tempo distributed traces with end-to-end exemplar &amp; <code>trace_id</code>
+            correlation — running on an Oracle Always-Free ARM64 VM behind Cloudflare Tunnel and Access.
+          </p>
+        </div>
+        <div class="case__links">
+          <a class="btn btn--primary" href="https://github.com/givewgun/oculory/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md ↗</a>
+          <a class="btn btn--ghost" href="https://github.com/givewgun/oculory/blob/main/docs/METRICS.md" target="_blank" rel="noopener">METRICS.md ↗</a>
+        </div>
+      </div>
+
+      <figure class="diagram">
+        <div class="diagram__bar">
+          <span class="diagram__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>oculory · correlated metrics, logs &amp; traces on 127.0.0.1 behind Cloudflare Access</span>
+        </div>
+        <div class="diagram__canvas">
+          <svg viewBox="0 0 920 275" role="img" aria-label="Oculory observability diagram: Apps and exporters send metrics to Prometheus, structured JSON stdout logs and OTLP traces through Grafana Alloy with tail sampling to Loki and Tempo, all queried by Grafana published exclusively via Cloudflare Tunnel and Access, while Prometheus alerts route through Alertmanager to Telegram and email.">
+            <defs>
+              <marker id="arr-o" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--text-dim)" />
+              </marker>
+              <marker id="arr-o-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent)" />
+              </marker>
+              <marker id="arr-o-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--ok)" />
+              </marker>
+            </defs>
+
+            <rect class="svg-box svg-box--ok" x="16" y="34" width="160" height="62" rx="10" />
+            <text class="svg-title" x="96" y="58" text-anchor="middle">Cloudflare Access</text>
+            <text class="svg-sub" x="96" y="74" text-anchor="middle">Zero-Trust Tunnel</text>
+            <text class="svg-sub" x="96" y="88" text-anchor="middle">0 open host ports</text>
+
+            <rect class="svg-box svg-box--accent" x="218" y="24" width="430" height="72" rx="10" />
+            <text class="svg-title" x="433" y="50" text-anchor="middle">Grafana (Provisioned-as-Code)</text>
+            <text class="svg-sub" x="433" y="68" text-anchor="middle">RED Exemplars ⇄ TraceQL Spans ⇄ LogQL trace_id</text>
+            <text class="svg-sub" x="433" y="84" text-anchor="middle">single pane across GunVest · Legion · Horizon</text>
+
+            <rect class="svg-box" x="218" y="128" width="132" height="58" rx="8" />
+            <text class="svg-title" x="284" y="152" text-anchor="middle">Prometheus</text>
+            <text class="svg-sub" x="284" y="169" text-anchor="middle">15s pull · 15d / 6GB</text>
+
+            <rect class="svg-box" x="367" y="128" width="132" height="58" rx="8" />
+            <text class="svg-title" x="433" y="152" text-anchor="middle">Loki</text>
+            <text class="svg-sub" x="433" y="169" text-anchor="middle">structured logs · 14d</text>
+
+            <rect class="svg-box" x="516" y="128" width="132" height="58" rx="8" />
+            <text class="svg-title" x="582" y="152" text-anchor="middle">Tempo</text>
+            <text class="svg-sub" x="582" y="169" text-anchor="middle">traces + map · 7d</text>
+
+            <rect class="svg-box" x="16" y="128" width="160" height="58" rx="8" />
+            <text class="svg-title" x="96" y="152" text-anchor="middle">Alertmanager</text>
+            <text class="svg-sub" x="96" y="169" text-anchor="middle">dedupe → Telegram/Mail</text>
+
+            <rect class="svg-box" x="218" y="212" width="194" height="50" rx="8" />
+            <text class="svg-title" x="315" y="233" text-anchor="middle">Apps + Custom Exporters</text>
+            <text class="svg-sub" x="315" y="249" text-anchor="middle">docker-stats · pg · nats · blackbox</text>
+
+            <rect class="svg-box svg-box--amber" x="434" y="212" width="214" height="50" rx="8" />
+            <text class="svg-title" x="541" y="233" text-anchor="middle">Grafana Alloy (1 Collector)</text>
+            <text class="svg-sub" x="541" y="249" text-anchor="middle">stdout JSON + OTLP tail-sampling</text>
+
+            <rect class="svg-box" x="692" y="128" width="210" height="134" rx="10" />
+            <text class="svg-title" x="797" y="154" text-anchor="middle">Instrumented Services</text>
+            <text class="svg-sub" x="797" y="176" text-anchor="middle">• Legion (NATS traceparent)</text>
+            <text class="svg-sub" x="797" y="196" text-anchor="middle">• GunVest (REST + PG)</text>
+            <text class="svg-sub" x="797" y="216" text-anchor="middle">• Horizon (Fastify + Proxy)</text>
+            <text class="svg-sub" x="797" y="242" text-anchor="middle">OTel SDK + pino/winston JSON</text>
+
+            <path class="svg-line svg-line--ok" d="M 176 62 L 216 62" marker-end="url(#arr-o-g)" />
+            <path class="svg-line svg-line--accent" d="M 284 96 L 284 126" marker-end="url(#arr-o-a)" />
+            <path class="svg-line svg-line--accent" d="M 433 96 L 433 126" marker-end="url(#arr-o-a)" />
+            <path class="svg-line svg-line--accent" d="M 582 96 L 582 126" marker-end="url(#arr-o-a)" />
+            <path class="svg-line" d="M 218 157 L 178 157" marker-end="url(#arr-o)" />
+            <path class="svg-line" d="M 284 186 L 284 210" marker-end="url(#arr-o)" />
+            <path class="svg-line" d="M 490 212 L 456 188" marker-end="url(#arr-o)" />
+            <path class="svg-line" d="M 582 212 L 582 188" marker-end="url(#arr-o)" />
+            <path class="svg-line" d="M 692 237 L 650 237" marker-end="url(#arr-o)" />
+          </svg>
+        </div>
+      </figure>
+
+      <div class="case__grid">
+        <div class="case-card spot">
+          <div class="case-card__label">Problem &amp; Constraints</div>
+          <p>
+            Running multiple services (GunVest, Legion, Horizon) on one Oracle Always-Free ARM64 VM meant tight RAM/disk budgets
+            and zero appetite for SaaS observability bills. The goal: true three-pillar correlation (click a latency spike → slow trace
+            → structured logs) with disk-bounded retention and zero exposed firewall ports.
+          </p>
+        </div>
+
+        <div class="case-card spot">
+          <div class="case-card__label">Key Engineering Decisions</div>
+          <ul>
+            <li><strong>Single collector (Grafana Alloy):</strong> Replaced separate Promtail + OTel Collector containers with one agent handling Docker stdout JSON tailing and OTLP <code>:4317/:4318</code> ingestion.</li>
+            <li><strong>Custom <code>docker-stats</code> exporter:</strong> Built a lightweight in-repo exporter reading the Docker API directly after cAdvisor failed to register containers on the host's <code>overlayfs</code> driver.</li>
+            <li><strong>Cross-bus trace stitching:</strong> Legion's NATS wrapper injects W3C <code>traceparent</code> into message headers so scheduler → agents → Ollama → emitter form a single distributed trace.</li>
+          </ul>
+        </div>
+
+        <div class="case-card case-card--warn spot">
+          <div class="case-card__label">Rejected Alternatives</div>
+          <ul>
+            <li><strong>Promtail + separate OTel Collector:</strong> Rejected — extra memory footprint and duplicated service-discovery configs on a free-tier VM.</li>
+            <li><strong>Head-based trace sampling:</strong> Rejected — drops rare errors; Alloy tail-sampling keeps 100% of errors and slow traces while sampling healthy traffic.</li>
+            <li><strong>Public Grafana port + basic auth:</strong> Rejected — every service binds to <code>127.0.0.1</code> only; Grafana is gated strictly behind Cloudflare Tunnel + Access.</li>
+          </ul>
+        </div>
+
+        <div class="case-card case-card--ok spot">
+          <div class="case-card__label">Operational Safeguards</div>
+          <ul>
+            <li><strong>Disk-bounded retention:</strong> Prometheus capped at 15d / 6 GB, Loki at 14d, Tempo at 7d so a log burst can never fill the root volume.</li>
+            <li><strong>Standard RED contract:</strong> Every app emits <code>http_request_duration_seconds</code> with exemplars, powering service maps and alerts out of the box.</li>
+            <li><strong>External visibility:</strong> Blackbox synthetic probes monitor public hostnames and TLS expiry from outside the app loop.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- =================================================================== -->
+    <!-- 04. HORIZON                                                         -->
+    <!-- =================================================================== -->
+    <article class="case" id="horizon">
+      <div class="case__head">
+        <div>
+          <div class="case__meta">
+            <span class="case__num">Case Study 04</span>
+            <span class="case__pill">6 Public ADRs</span>
+            <span class="case__pill case__pill--ok">Resilient Proxy · Same-Origin</span>
+          </div>
+          <h2 class="case__title">Horizon — Resilient Space &amp; Earth Telemetry</h2>
+          <p class="case__subtitle">
+            Single-process Fastify + React/CesiumJS dashboard aggregating 7+ volatile third-party space and weather APIs with
+            single-flight caching, last-known-good stale fallback, and honest UI freshness badges.
+          </p>
+        </div>
+        <div class="case__links">
+          <a class="btn btn--primary" href="https://github.com/givewgun/horizon/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md ↗</a>
+          <a class="btn btn--ghost" href="https://github.com/givewgun/horizon/blob/main/docs/adr/0004-graceful-upstream-failure-policy.md" target="_blank" rel="noopener">Read ADR-0004 ↗</a>
+        </div>
+      </div>
+
+      <figure class="diagram">
+        <div class="diagram__bar">
+          <span class="diagram__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>horizon · single-flight TTL cache &amp; truthful 3-tier degradation</span>
+        </div>
+        <div class="diagram__canvas">
+          <svg viewBox="0 0 920 235" role="img" aria-label="Horizon architecture diagram: Browser SPA communicates same-origin over Cloudflare Tunnel to a single Fastify backend with TtlCache single-flight deduplication and lastGood stale store, proxying 7 upstream APIs and returning LIVE, SNAPSHOT stale, or typed 502 ApiErr states.">
+            <defs>
+              <marker id="arr-h" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--text-dim)" />
+              </marker>
+              <marker id="arr-h-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--accent)" />
+              </marker>
+              <marker id="arr-h-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="currentColor" style="color:var(--ok)" />
+              </marker>
+            </defs>
+
+            <rect class="svg-box svg-box--accent" x="18" y="34" width="186" height="162" rx="10" />
+            <text class="svg-title" x="111" y="60" text-anchor="middle">Browser SPA (Vite)</text>
+            <text class="svg-sub" x="111" y="84" text-anchor="middle">• CesiumJS (React.lazy)</text>
+            <text class="svg-sub" x="111" y="104" text-anchor="middle">• SGP4 client orbits</text>
+            <text class="svg-sub" x="111" y="124" text-anchor="middle">• Canvas planetarium</text>
+            <text class="svg-sub" x="111" y="144" text-anchor="middle">• Honest StatusBadge</text>
+            <text class="svg-sub" x="111" y="164" text-anchor="middle">• Zero frontend secrets</text>
+
+            <rect class="svg-box" x="252" y="34" width="212" height="162" rx="10" />
+            <text class="svg-title" x="358" y="60" text-anchor="middle">Fastify (Same-Origin)</text>
+            <text class="svg-sub" x="358" y="80" text-anchor="middle">serves /dist + /api/*</text>
+            <rect class="svg-box svg-box--amber" x="268" y="96" width="180" height="84" rx="8" />
+            <text class="svg-title" x="358" y="118" text-anchor="middle">TtlCache&lt;T&gt;</text>
+            <text class="svg-sub" x="358" y="136" text-anchor="middle">1. per-key TTL</text>
+            <text class="svg-sub" x="358" y="152" text-anchor="middle">2. single-flight inflight</text>
+            <text class="svg-sub" x="358" y="168" text-anchor="middle">3. lastGood(key) + ageMs</text>
+
+            <rect class="svg-box svg-box--ok" x="514" y="24" width="168" height="52" rx="8" />
+            <text class="svg-title" x="598" y="46" text-anchor="middle">Tier 1 · LIVE</text>
+            <text class="svg-sub" x="598" y="62" text-anchor="middle">upstream ok → fresh</text>
+
+            <rect class="svg-box svg-box--amber" x="514" y="92" width="168" height="52" rx="8" />
+            <text class="svg-title" x="598" y="114" text-anchor="middle">Tier 2 · SNAPSHOT</text>
+            <text class="svg-sub" x="598" y="130" text-anchor="middle">fail → lastGood + badge</text>
+
+            <rect class="svg-box" x="514" y="160" width="168" height="52" rx="8" />
+            <text class="svg-title" x="598" y="182" text-anchor="middle">Tier 3 · 502 ApiErr</text>
+            <text class="svg-sub" x="598" y="198" text-anchor="middle">cold fail → FeedFallback</text>
+
+            <rect class="svg-box" x="726" y="34" width="176" height="162" rx="10" />
+            <text class="svg-title" x="814" y="60" text-anchor="middle">7+ Volatile Upstreams</text>
+            <text class="svg-sub" x="814" y="84" text-anchor="middle">LL2 (60s) · CelesTrak (3h)</text>
+            <text class="svg-sub" x="814" y="104" text-anchor="middle">NOAA SWPC (5m)</text>
+            <text class="svg-sub" x="814" y="124" text-anchor="middle">Open-Meteo · OWM</text>
+            <text class="svg-sub" x="814" y="144" text-anchor="middle">Nominatim (≥1 req/s)</text>
+            <text class="svg-sub" x="814" y="164" text-anchor="middle">YouTube live scrape</text>
+
+            <path class="svg-line svg-line--accent" d="M 204 115 L 250 115" marker-end="url(#arr-h-a)" />
+            <path class="svg-line svg-line--ok" d="M 464 80 L 512 50" marker-end="url(#arr-h-g)" />
+            <path class="svg-line" d="M 464 118 L 512 118" marker-end="url(#arr-h)" />
+            <path class="svg-line" d="M 464 156 L 512 186" marker-end="url(#arr-h)" />
+            <path class="svg-line" d="M 682 118 L 724 118" marker-end="url(#arr-h)" />
+          </svg>
+        </div>
+      </figure>
+
+      <div class="case__grid">
+        <div class="case-card spot">
+          <div class="case-card__label">Problem &amp; Constraints</div>
+          <p>
+            Public space and weather APIs rate-limit aggressively, time out, and break schemas. Naive dashboards either hammer
+            upstreams per tab (thundering herd), leak API keys into the browser, or lie to users by silently showing hours-old data as "live."
+          </p>
+        </div>
+
+        <div class="case-card spot">
+          <div class="case-card__label">Selected ADRs (Verified on GitHub)</div>
+          <div class="adr-list">
+            <a class="adr-link" href="https://github.com/givewgun/horizon/blob/main/docs/adr/0001-stack-and-hosting.md" target="_blank" rel="noopener">
+              <b>ADR-0001</b><span>Single-process Fastify + Vite SPA (no CORS, no frontend secrets)</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/horizon/blob/main/docs/adr/0003-skip-d3-celestial-for-canvas-renderer.md" target="_blank" rel="noopener">
+              <b>ADR-0003</b><span>Custom Canvas stereographic sky renderer over D3-Celestial</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/horizon/blob/main/docs/adr/0004-graceful-upstream-failure-policy.md" target="_blank" rel="noopener">
+              <b>ADR-0004</b><span>Single-flight TTL cache + last-known-good truthful degradation</span><em>↗</em>
+            </a>
+            <a class="adr-link" href="https://github.com/givewgun/horizon/blob/main/docs/adr/0005-youtube-live-scrape-vs-data-api.md" target="_blank" rel="noopener">
+              <b>ADR-0005</b><span>Live channel scrape over quota-heavy YouTube Data API</span><em>↗</em>
+            </a>
+          </div>
+        </div>
+
+        <div class="case-card case-card--warn spot">
+          <div class="case-card__label">Rejected Alternatives</div>
+          <ul>
+            <li><strong>Per-route ad-hoc caching:</strong> Rejected — guarantees inconsistent timeout/failure behavior across 7 upstream clients.</li>
+            <li><strong>Silent stale-while-revalidate:</strong> Rejected — hides upstream outages from the operator; Horizon explicitly demotes the UI badge to <code>SNAPSHOT · stale</code> with <code>ageMs</code>.</li>
+            <li><strong>Eager CesiumJS bundle:</strong> Rejected — heavy WebGL globe is code-split behind <code>React.lazy</code> + <code>Suspense</code> so initial load stays fast.</li>
+          </ul>
+        </div>
+
+        <div class="case-card case-card--ok spot">
+          <div class="case-card__label">Failure Modes &amp; Mitigations</div>
+          <ul>
+            <li><strong>Cache-miss thundering herd:</strong> Single-flight <code>inflight</code> map shares one upstream request across concurrent callers for the same key.</li>
+            <li><strong>Upstream 429 / 8s timeout:</strong> Typed <code>UpstreamError</code> triggers <code>lastGood(key)</code> fallback before ever surfacing a panel failure.</li>
+            <li><strong>Rate-limited geocoding:</strong> Nominatim client enforces a ≥1 req/s throttle server-side to respect fair-use policy.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- =================================================================== -->
+    <!-- 05. ENTERPRISE NDA SCOPE                                            -->
+    <!-- =================================================================== -->
+    <section class="case" id="nda">
+      <div class="nda-box spot">
+        <div>
+          <p class="case__num">Enterprise Scope · Under NDA</p>
+          <h2 class="nda-box__title">What I can whiteboard in an interview</h2>
+          <p class="nda-box__text">
+            My day-job systems at the Bank of Thailand and my IoT scale-up with Adrich / Carnegie Mellon are bound by confidentiality,
+            so diagrams and internals stay off the public web. In a technical interview, I'm happy to walk through sanitized patterns,
+            capacity modeling, and trade-offs across these domains.
+          </p>
+          <div class="case__links" style="margin-top: 1.4rem;">
+            <a class="btn btn--primary" href="index.html#contact">Open a channel →</a>
+            <a class="btn btn--ghost" href="index.html#experience">View experience timeline</a>
+          </div>
+        </div>
+        <div class="nda-domains">
+          <div class="nda-domain">
+            <b>Public Identity &amp; Access Management (2M+ users)</b>
+            <span>Zero-Trust boundaries, Azure AD B2C federation, .NET 10 / Docker golden images, ARB governance &amp; IGA lifecycle patterns.</span>
+          </div>
+          <div class="nda-domain">
+            <b>High-Volume IoT Backend Redesign (20k → 5M devices)</b>
+            <span>API Gateway + queue decoupling, C-level on-device ECL payload compression (-50%), custom load simulation &amp; formal ADRs.</span>
+          </div>
+          <div class="nda-domain">
+            <b>High-Throughput Customer Messaging (Agoda)</b>
+            <span>Scala/Akka/Kafka microservices, SQL + Hadoop campaign targeting, Spark retargeting, Docker/Helm Kubernetes migration.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="arch-foot">
+    <span>© Gun Kaewngarm · Every diagram &amp; ADR link above maps to public source on <a href="https://github.com/givewgun" target="_blank" rel="noopener">github.com/givewgun</a>.</span>
+    <span><a href="index.html">← Portfolio</a> · <a href="launch.html">Flight Profile</a> · <a href="mars.html">Mars</a></span>
+  </footer>
+
+  <script>
+    (function () {
+      var btn = document.getElementById("archThemeToggle");
+      if (btn) {
+        btn.addEventListener("click", function () {
+          var next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", next);
+          try { localStorage.setItem("theme", next); } catch (e) {}
+        });
+      }
+      var burger = document.getElementById("archBurger");
+      var nav = document.getElementById("archNav");
+      if (burger && nav) {
+        burger.addEventListener("click", function () {
+          var open = nav.classList.toggle("is-open");
+          burger.setAttribute("aria-expanded", String(open));
+        });
+        nav.addEventListener("click", function (e) {
+          if (e.target.closest("a")) {
+            nav.classList.remove("is-open");
+            burger.setAttribute("aria-expanded", "false");
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

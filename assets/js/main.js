@@ -129,6 +129,7 @@
         .filter((s) => s.nav !== false)
         .map((s) => `<a href="#${s.id}">${esc(s.label)}</a>`)
         .join("") +
+      `<a class="nav__flight nav__arch" href="architecture.html">Architecture</a>` +
       `<a class="nav__flight" href="launch.html">Flight</a>` +
       `<a class="nav__flight nav__mars" href="mars.html">Mars</a>`;
 
@@ -145,7 +146,7 @@
       `${esc(D.meta.tagline || D.meta.headline)}` + (creds ? `<span class="hero__creds">${creds}</span>` : "");
 
     const cta = [];
-    cta.push(`<a class="btn btn--primary" href="#projects">Explore the work${icons.arrow}</a>`);
+    cta.push(`<a class="btn btn--primary" href="architecture.html">Architecture &amp; ADRs${icons.arrow}</a>`);
     cta.push(`<a class="btn btn--flight" href="launch.html"><span class="btn__play" aria-hidden="true">▶</span>Watch Flight Profile</a>`);
     const li = D.contact.links.find((l) => l.icon === "linkedin");
     if (li) cta.push(`<a class="btn btn--ghost" href="${esc(li.url)}" target="_blank" rel="noopener">${icons.linkedin}LinkedIn</a>`);
@@ -246,7 +247,7 @@
         .map((p) => `<li class="launch__point"><b>${esc(p.value)}</b><span>${esc(p.label)}</span></li>`)
         .join("");
       const links = (L.links || [])
-        .map((l, i) => `<a class="btn ${i === 0 ? "btn--primary" : "btn--ghost"}" href="${esc(l.url)}" target="_blank" rel="noopener">${icons[l.icon] || ""}${esc(l.label)}</a>`)
+        .map((l, i) => `<a class="btn ${i === 0 ? "btn--primary" : "btn--ghost"}" href="${esc(l.url)}"${l.local ? "" : ' target="_blank" rel="noopener"'}>${icons[l.icon] || ""}${esc(l.label)}</a>`)
         .join("");
       const coverage = (L.coverage || [])
         .map((c) => (c.url
@@ -349,7 +350,10 @@
         .map((p) => {
           const tags = (p.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("");
           const lnk = p.url ? `<a class="project-card__link" href="${esc(p.url)}" target="_blank" rel="noopener" aria-label="Open ${esc(p.title)} on GitHub">${icons.external}</a>` : "";
-          const badge = p.featured ? '<span class="project-card__badge">New</span>' : "";
+          const badge = p.featured ? '<span class="project-card__badge">Featured</span>' : "";
+          const archCta = p.archUrl
+            ? `<a class="project-card__more" href="${esc(p.archUrl)}"${p.archExternal ? ' target="_blank" rel="noopener"' : ""}>${esc(p.archLabel || "Read architecture")}${icons.arrow}</a>`
+            : "";
           return `<article class="project-card spot tilt ${p.featured ? "project-card--featured" : ""} reveal">
             <div class="project-card__head">
               <div>
@@ -358,12 +362,19 @@
               </div>${lnk}
             </div>
             <p class="project-card__desc">${esc(p.description)}</p>
-            ${p.featured && D.launch ? `<a class="project-card__more" href="#tandem">See the launch spotlight${icons.arrow}</a>` : ""}
+            ${archCta}
             ${tags ? `<div class="tag-row">${tags}</div>` : ""}
           </article>`;
         })
         .join("");
-      return sectionShell("projects", "Missions flown", "Projects", `<div class="projects__grid">${cards}</div>`);
+      const archBanner = `<div class="arch-callout spot reveal">
+        <div>
+          <p class="arch-callout__kicker">Architecture &amp; Design Records</p>
+          <p class="arch-callout__text">System diagrams, 65+ public ADRs, rejected alternatives, and failure-mode engineering across Legion, tandem, Oculory, and Horizon.</p>
+        </div>
+        <a class="btn btn--primary" href="architecture.html">Read case studies${icons.arrow}</a>
+      </div>`;
+      return sectionShell("projects", "Missions flown", "Selected Systems", `<div class="projects__grid">${cards}</div>${archBanner}`);
     },
 
     repos() {

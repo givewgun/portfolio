@@ -169,6 +169,9 @@
       });
     });
 
+    add("Navigate", "Architecture & ADRs", "architecture adr system design diagrams legion tandem oculory horizon case studies", "nav", "architecture.html", () => {
+      window.location.href = "architecture.html";
+    });
     add("Navigate", "Watch Flight Profile", "flight rocket launch spacex webcast career trajectory", "rocket", "launch.html", () => {
       window.location.href = "launch.html";
     });
@@ -201,8 +204,9 @@
     const ghUrl = (gh && gh.url) || (meta.githubUser ? "https://github.com/" + meta.githubUser : "");
     if (ghUrl) add("Actions", "Open GitHub", "code repos open source", "link", "↗", openUrl(ghUrl));
 
-    const tandem = projects.find((p) => p && /tandem/i.test(p.title || ""));
-    const tandemUrl = (tandem && tandem.url) || ("https://github.com/" + (meta.githubUser || "givewgun") + "/tandem");
+    const tandemUrl = (D.launch && D.launch.repo)
+      ? "https://github.com/" + D.launch.repo
+      : ("https://github.com/" + (meta.githubUser || "givewgun") + "/multi-agents-pc");
     add("Actions", "Open tandem on GitHub", "tandem-agents claude gemini mcp repo", "link", "↗", openUrl(tandemUrl));
 
     add("Actions", "npm install -g tandem-agents", "copy cli install tandem npm", "terminal", "Copy", () => {

@@ -1,55 +1,98 @@
 /*
  * /api/arcane-image — generates a fantasy background image with Google Gemini.
  *
- * Requires a secret `GEMINI_API_KEY` (free key from https://aistudio.google.com).
- * Optionally set `GEMINI_IMAGE_MODEL` to override the image-capable model.
+ * Hardened against open-proxy abuse:
+ *   - Enforces same-origin / allowed-origin browser requests (no ACAO: *).
+ *   - Per-IP rate limit (5 requests / 10 minutes).
+ *   - Server-side curated scene allowlist ONLY: arbitrary `?prompt=` input is
+ *     ignored so callers can never use this endpoint as a general image proxy.
  *
- * Returns the raw image bytes on success. On any problem it returns a non-2xx
- * JSON response so the browser falls back to Pollinations.ai automatically.
+ * Requires secret `GEMINI_API_KEY`. Optionally set `GEMINI_IMAGE_MODEL`.
  */
 
-const DEFAULT_MODEL = "gemini-2.5-flash-image-preview";
+import { validateOrigin, checkRateLimit, jsonResponse, securityHeaders } from "./guard.js";
 
-function json(obj, status) {
-  return new Response(JSON.stringify(obj), {
-    status: status || 200,
-    headers: { "content-type": "application/json", "access-control-allow-origin": "*" },
-  });
-}
+const DEFAULT_MODEL = "gemini-2.5-flash-image";
+const TIMEOUT_MS = 18000;
 
-export async function handleArcaneImage(request, env) {
+const IMAGE_STYLE =
+  "ornate Dungeons & Dragons arcane fantasy art, glowing magical runes and sigils, " +
+  "deep amethyst purple and antique gold, mystical, atmospheric, highly detailed, " +
+  "painterly, wide cinematic landscape, no text, no watermark, no people";
+
+const SCENES = [
+  "an ancient arcane library with floating tomes and candlelight",
+  "a wizard's tower interior crackling with violet energy",
+  "an enchanted moonlit forest clearing with glowing fireflies",
+  "a glowing magical portal of swirling golden runes",
+  "a dragon's treasure hoard in a vast underground cavern",
+  "a celestial observatory under a starry void, constellations alive",
+  "a rune-carved dungeon hall lit by torches and magical crystals",
+  "a misty mountain temple of forgotten gods at dusk",
+];
+
+export async function handleArcaneImage(request, env, ctx) {
+  const origin = validateOrigin(request);
+  if (!origin.ok) {
+    return jsonResponse({ error: "Forbidden" }, 403, null);
+  }
+
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed" }, 405, origin.corsOrigin, { allow: "GET" });
+  }
+
   const key = env.GEMINI_API_KEY;
-  if (!key) return json({ error: "GEMINI_API_KEY not configured" }, 503);
+  if (!key) return jsonResponse({ error: "GEMINI_API_KEY not configured" }, 503, origin.corsOrigin);
+
+  const rl = await checkRateLimit(request, ctx, { bucket: "arcane-image", limit: 5, windowSec: 600 });
+  if (!rl.ok) {
+    return jsonResponse(
+      { error: "Rate limit exceeded. Try again shortly." },
+      429,
+      origin.corsOrigin,
+      { "retry-after": String(rl.retryAfter) }
+    );
+  }
 
   const url = new URL(request.url);
-  const prompt = (url.searchParams.get("prompt") || "").slice(0, 800) ||
-    "ornate Dungeons & Dragons arcane fantasy background, glowing runes, purple and gold";
+  const rawIdx = parseInt(url.searchParams.get("scene") || "", 10);
+  const idx = Number.isInteger(rawIdx) && rawIdx >= 0 && rawIdx < SCENES.length
+    ? rawIdx
+    : Math.floor(Math.random() * SCENES.length);
+  const prompt = `${SCENES[idx]}, ${IMAGE_STYLE}`;
   const model = env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL;
 
   const endpoint =
     "https://generativelanguage.googleapis.com/v1beta/models/" +
     encodeURIComponent(model) +
-    ":generateContent?key=" + encodeURIComponent(key);
+    ":generateContent";
 
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
   };
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let res;
   try {
     res = await fetch(endpoint, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-goog-api-key": key,
+      },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
   } catch (e) {
-    return json({ error: "upstream request failed", detail: String(e) }, 502);
+    return jsonResponse({ error: "upstream request failed" }, 502, origin.corsOrigin);
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!res.ok) {
-    const detail = (await res.text()).slice(0, 400);
-    return json({ error: "gemini error", status: res.status, detail }, 502);
+    return jsonResponse({ error: "upstream image error", status: res.status }, 502, origin.corsOrigin);
   }
 
   const data = await res.json();
@@ -57,17 +100,15 @@ export async function handleArcaneImage(request, env) {
     (data && data.candidates && data.candidates[0] && data.candidates[0].content &&
       data.candidates[0].content.parts) || [];
   const imagePart = parts.find((p) => p.inlineData && p.inlineData.data);
-  if (!imagePart) return json({ error: "no image in response" }, 502);
+  if (!imagePart) return jsonResponse({ error: "no image in response" }, 502, origin.corsOrigin);
 
   const binary = atob(imagePart.inlineData.data);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
 
   return new Response(bytes, {
-    headers: {
+    headers: securityHeaders(origin.corsOrigin, {
       "content-type": imagePart.inlineData.mimeType || "image/png",
-      "cache-control": "no-store",
-      "access-control-allow-origin": "*",
-    },
+    }),
   });
 }

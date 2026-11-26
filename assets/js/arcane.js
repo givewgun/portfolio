@@ -119,11 +119,8 @@
   }
 
   function summonLore() {
-    var data = window.portfolioData;
-    var base = data && data.about && data.about.paragraphs;
-    if (!base || !base.length) return;
     setBusy("lore", true);
-    postJSON(TEXT_ENDPOINT, { kind: "lore", base: base, seed: Math.floor(Math.random() * 1e6) })
+    fetchJSON(TEXT_ENDPOINT + "?kind=lore&seed=" + Math.floor(Math.random() * 1e6))
       .then(function (out) {
         if (out && out.paragraphs && window.PortfolioArcane) window.PortfolioArcane.setLore(out.paragraphs);
       })

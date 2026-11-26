@@ -46,6 +46,7 @@ const portfolioData = {
     githubExcludePatterns: [
       "tutorial", "study", "recitation", "assignment", "bootcamp",
       "boot-camp", "essential", "portfolio", "givewgun",
+      "elscione-dl", "flappyai", "battleducks", "ramaiv",
     ],
     // Max number of repos to show in the live section.
     githubRepoLimit: 6,
@@ -57,7 +58,7 @@ const portfolioData = {
   /* ----------------------------------------------------------------------- */
   contact: {
     email: "gun.kaewngarm@gmail.com",
-    phone: "+66 97 038 5655",
+    phone: "",
     links: [
       {
         label: "LinkedIn",
@@ -239,6 +240,7 @@ const portfolioData = {
     imageAlt: "tandem's local dashboard: work split between Claude and Gemini, 5-hour and weekly plan meters, and live limit routing",
     links: [
       { label: "GitHub", icon: "github", url: "https://github.com/givewgun/multi-agents-pc" },
+      { label: "Architecture (15 ADRs)", icon: "book", url: "architecture.html#tandem", local: true },
       { label: "npm", icon: "package", url: "https://www.npmjs.com/package/tandem-agents" },
       { label: "60-second ELI5", icon: "book", url: "https://github.com/givewgun/multi-agents-pc/blob/main/docs/ELI5.md" },
     ],
@@ -250,89 +252,50 @@ const portfolioData = {
   },
 
   /* ----------------------------------------------------------------------- */
-  /*  PROJECTS                                                               */
+  /*  PROJECTS  (curated top systems; tandem lives in the Launch Spotlight)  */
   /* ----------------------------------------------------------------------- */
   projects: [
     {
-      title: "tandem",
-      org: "Open Source · npm tandem-agents",
-      url: "https://github.com/givewgun/multi-agents-pc",
+      title: "Legion",
+      org: "Multi-Agent Consensus Engine · 36 ADRs",
+      url: "https://github.com/givewgun/legion",
+      archUrl: "architecture.html#legion",
+      archLabel: "Architecture & 36 ADRs",
       featured: true,
       description:
-        "Runs Claude Code and Gemini (Google Antigravity) as one team on the subscriptions you already pay for — no API keys, zero runtime dependencies. Either agent can lead; plan critiques, code reviews and second opinions always go to the other model family, so nothing self-reviews. Plan-aware routing reads real 5-hour and weekly windows and steers work around rate limits, with a local dashboard, a cost ledger and benchmarks behind the routing rules.",
-      tags: ["Node.js", "MCP", "Claude Code", "Gemini / Antigravity", "Zero deps", "MIT"],
-    },
-    {
-      title: "Legion",
-      org: "Multi-Agent Stock Signal Engine",
-      url: "https://github.com/givewgun/legion",
-      description:
-        "\"Every point of view is useful, even those that are wrong — if we can judge why a wrong view was accepted.\" — Legion, Mass Effect 2. A leaderless multi-agent stock-signal engine: specialized agents vote, debate dissent across rounds, and reach deterministic consensus weighted by stance, conviction, and self-tuning reliability. Advisory only — never places real trades.",
-      tags: ["Node.js", "NATS", "Ollama (local LLM)", "PostgreSQL", "Vitest", "Docker"],
-    },
-    {
-      title: "GunVest",
-      org: "Investment Dashboard · Full-stack",
-      url: "https://github.com/givewgun/gunvest-public",
-      description:
-        "A real-time investment command center with macro tracking, behavioral coaching, and AI-powered sentiment analysis that aggregates Finnhub, StockTwits, Reddit, and Google Gemini. Includes a geopolitical \"war room\" (GDELT + RSS ingestion with AI impact scoring) and an Inverse-Cramer module that extracts Cramer's picks via YouTube + Gemini for contrarian signals.",
-      tags: ["React 18", "Node.js / Express", "Socket.io", "Gemini AI", "SQLite", "Docker"],
-    },
-    {
-      title: "Horizon",
-      org: "Space & Earth Dashboard",
-      url: "https://github.com/givewgun/horizon",
-      description:
-        "A real-time space & earth monitoring dashboard: launch forecasts with countdowns and embedded webcasts (The Space Devs API), a CesiumJS satellite globe tracking the ISS, Hubble & JWST with client-side SGP4 orbit propagation and visible-pass prediction, and aggregated NASA/SpaceX/ESA live streams. Containerized behind a Cloudflare Tunnel.",
-      tags: ["TypeScript", "React + Vite", "Fastify", "CesiumJS", "Docker", "Cloudflare Tunnel"],
+        "A leaderless multi-agent stock-signal engine over NATS with no prime decider: 4 LLM voters plus a deterministic risk node debate dissent across rounds and converge via BFT-flavored weighted aggregation, Pearson redundancy-discounted quorum, anti-herding guards, crash-recoverable state replay, and an outbox-decoupled paper execution pipeline.",
+      tags: ["Node.js", "NATS", "Ollama", "PostgreSQL", "OpenTelemetry", "Docker"],
     },
     {
       title: "Oculory",
-      org: "Observability Stack · Self-hosted",
+      org: "Three-Pillar Observability Platform · Self-hosted",
       url: "https://github.com/givewgun/oculory",
+      archUrl: "architecture.html#oculory",
+      archLabel: "Architecture & 3-Pillar Stack",
       description:
-        "A unified Grafana-based observability stack for an Oracle Always-Free VM: metrics (Prometheus), logs (Loki), and distributed traces (Tempo) collected by a single Grafana Alloy agent with trace-to-log-to-metric correlation. Alertmanager fans out to Telegram and email; Blackbox synthetic probes and Cloudflare Access cover external visibility and secure ingress. ARM64 Docker Compose — production-grade visibility at zero runtime cost.",
+        "A unified Grafana observability platform on an Oracle Always-Free ARM64 VM: Prometheus metrics (with RED exemplars), Loki structured logs, and Tempo distributed traces collected by a single Grafana Alloy agent with tail-sampling, custom Docker API metrics, NATS W3C traceparent stitching, and zero-trust ingress via Cloudflare Tunnel & Access.",
       tags: ["Grafana", "Prometheus", "Loki", "Tempo", "Alloy", "Alertmanager", "Docker"],
     },
     {
-      title: "elscione-dl",
-      org: "Python · Interactive TUI",
-      url: "https://github.com/givewgun/elscione-dl",
+      title: "Horizon",
+      org: "Resilient Space & Earth Telemetry · 6 ADRs",
+      url: "https://github.com/givewgun/horizon",
+      archUrl: "architecture.html#horizon",
+      archLabel: "Architecture & 6 ADRs",
       description:
-        "A bulk light-novel & manga downloader with a full-screen interactive terminal UI and automatic OneDrive sync. Smart resume via .part files and manifest tracking, EPUB/PDF export, and configurable parallel downloads (1–10 concurrent) with automatic retry logic for failed files.",
-      tags: ["Python 3.11", "TUI", "TOML", "Async"],
+        "A real-time space & earth monitoring platform aggregating 7+ volatile third-party feeds behind a single-process Fastify proxy with single-flight TTL caching, last-known-good stale fallback, honest freshness badges, client-side SGP4 orbit propagation on lazy-loaded CesiumJS, and a custom Canvas stereographic planetarium.",
+      tags: ["TypeScript", "React + Vite", "Fastify", "CesiumJS", "SQLite", "Cloudflare Tunnel"],
     },
     {
-      title: "Jenkins DevOps Pipeline",
-      org: "CI/CD · Infrastructure",
-      url: "https://github.com/givewgun/jenkins-full-devops-pipeline",
+      title: "GunVest",
+      org: "Investment Command Center · 10 ADRs",
+      url: "https://github.com/givewgun/gunvest-public",
+      archUrl: "https://github.com/givewgun/gunvest-public/blob/main/docs/ARCHITECTURE.md",
+      archLabel: "Architecture & 10 ADRs",
+      archExternal: true,
       description:
-        "An end-to-end CI/CD pipeline integrating build, code-quality, security, and deployment stages — Jenkins orchestration with SonarQube quality gates, OWASP ZAP security scanning, Ansible-driven EC2 deployment, and a Prometheus + Grafana observability stack.",
-      tags: ["Jenkins", "SonarQube", "OWASP ZAP", "Ansible", "Prometheus", "Grafana"],
-    },
-    {
-      title: "FlappyAI",
-      org: "Machine Learning",
-      url: "https://github.com/givewgun/FlappyAI",
-      description:
-        "An AI that learns to play Flappy Bird autonomously by combining neural networks with a genetic algorithm — evolving and optimizing bird behavior across generations, with model persistence to track training progress.",
-      tags: ["Python", "Neural Networks", "Genetic Algorithm"],
-    },
-    {
-      title: "Rama IV Traffic Dashboard & Prediction",
-      org: "Data Engineering · ML",
-      url: "https://github.com/givewgun/RamaIV-Dashboard-prediction",
-      description:
-        "A traffic monitoring dashboard and speed-prediction system built on taxi GPS data (Chulalongkorn University). The dashboard runs on Plotly Dash backed by Google BigQuery; a CNN-based model treats traffic as images — translating spatiotemporal dynamics into time-space matrices — to predict speed within ~10 km/h. Served via Flask in Docker on Google Cloud Run.",
-      tags: ["Python", "CNN / Deep Learning", "Plotly Dash", "BigQuery", "Flask", "Cloud Run"],
-    },
-    {
-      title: "Real-time Multiplayer Battleship",
-      org: "Real-time Multiplayer Game",
-      url: "https://github.com/givewgun/battleducks",
-      description:
-        "A real-time, two-player Battleship game (Carnegie Mellon University) with a JavaScript/HTML front-end and a Python (Django) backend over WebSockets. Features OAuth login, matchmaking, and in-game chat, backed by PostgreSQL and supporting multiple concurrent matches. Deployed on Amazon EC2 with SSL.",
-      tags: ["Django", "WebSocket", "PostgreSQL", "OAuth", "AWS EC2"],
+        "A full-stack investment command center with macro tracking, behavioral coaching, and AI sentiment aggregation across Finnhub, StockTwits, Reddit, and Google Gemini — backed by PostgreSQL, Socket.io real-time updates, and a GDELT + RSS geopolitical impact ingestion pipeline.",
+      tags: ["React 18", "Node.js / Express", "PostgreSQL", "Socket.io", "Gemini AI", "Docker"],
     },
   ],
 
@@ -341,9 +304,6 @@ const portfolioData = {
   /* ----------------------------------------------------------------------- */
   certifications: [
     { name: "Microsoft Certified: Azure Solutions Architect Expert", issuer: "Microsoft" },
-    { name: "Kubernetes Mastery", issuer: "" },
-    { name: "GitLab CI: Pipelines, CI/CD and DevOps", issuer: "" },
-    { name: "Pragmatic System Design", issuer: "" },
   ],
 
   /* ----------------------------------------------------------------------- */
@@ -502,9 +462,9 @@ const portfolioData = {
     { id: "about", label: "About" },
     { id: "tandem", label: "Launch" },
     { id: "experience", label: "Experience" },
-    { id: "skills", label: "Skills" },
+    { id: "skills", label: "Skills", nav: false },
     { id: "projects", label: "Projects" },
-    { id: "repos", label: "Open Source" },
+    { id: "repos", label: "Open Source", nav: false },
     { id: "certifications", label: "Certifications", nav: false },
     { id: "education", label: "Education" },
     { id: "awards", label: "Awards", nav: false },

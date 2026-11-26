@@ -56,7 +56,7 @@
   </header>
 
   <!-- ===== Webcast HUD ===== -->
-  <div class="hud" id="hud" aria-hidden="true">
+  <div class="hud" id="hud">
     <!-- event card -->
     <aside class="card" id="eventCard">
       <p class="card__kicker"><span data-card-time>T+00:00:00</span><b data-card-code>LIFTOFF</b></p>
@@ -68,19 +68,19 @@
     </aside>
 
     <!-- real-world next launch -->
-    <div class="realnext" id="realNext" hidden>
+    <div class="realnext" id="realNext" aria-hidden="true" hidden>
       <span>NEXT REAL LAUNCH</span>
       <b data-rn-name></b>
       <em data-rn-clock>T-00:00:00:00</em>
     </div>
 
     <!-- picture-in-picture booster cam frame -->
-    <div class="pip" id="pip">
+    <div class="pip" id="pip" aria-hidden="true">
       <div class="pip__label"><i></i>BOOSTER CAM <span data-pip-state>BOOSTBACK</span></div>
     </div>
 
     <!-- bottom telemetry strip -->
-    <div class="tele">
+    <div class="tele" aria-hidden="true">
       <section class="stage stage--1">
         <header>STAGE 1 <span data-s1-state>STANDBY</span></header>
         <div class="gauges">
@@ -113,11 +113,11 @@
       </section>
     </div>
 
-    <p class="hint" id="scrollHint"><span>SCROLL TO FLY</span> · or press <kbd>A</kbd> for auto-fly</p>
+    <p class="hint" id="scrollHint" aria-hidden="true"><span>SCROLL TO FLY</span> · or press <kbd>A</kbd> for auto-fly</p>
   </div>
 
   <!-- ===== Countdown ===== -->
-  <div class="countdown" id="countdown" role="dialog" aria-label="Launch countdown">
+  <div class="countdown" id="countdown" role="dialog" aria-modal="true" aria-label="Launch countdown">
     <div class="countdown__inner">
       <p class="countdown__kicker">MISSION GK-1 · <span data-site>LC-13 · BANGKOK</span></p>
       <p class="countdown__clock">T-<b id="cdClock">00:00:10</b></p>

@@ -251,7 +251,7 @@ function setEngines(list, n) {
 }
 
 let flashLevel = 0;
-function flash(a) { flashLevel = Math.max(flashLevel, a); }
+function flash(a) { if (!REDUCE) flashLevel = Math.max(flashLevel, a); }
 
 /* ------------------------------------------------------------------------ */
 /* Audio (synthesised, off by default)                                      */
@@ -300,6 +300,11 @@ const audio = {
   },
 };
 
+document.addEventListener("visibilitychange", () => {
+  if (!audio.ctx) return;
+  if (document.hidden) audio.ctx.suspend(); else if (audio.on) audio.ctx.resume();
+});
+
 /* ------------------------------------------------------------------------ */
 /* Flight control: countdown, scroll, auto-fly, cameras                     */
 /* ------------------------------------------------------------------------ */
@@ -307,9 +312,14 @@ const ctl = {
   phase: "countdown",   // countdown | flight
   cdStart: performance.now(), cdLen: 10,
   auto: false, cam: 0, p: 0, met: -10,
+  autoY: 0,
 };
 const autoBtn = $("#autoBtn"), soundBtn = $("#soundBtn");
-function setAuto(on) { ctl.auto = on; autoBtn.setAttribute("aria-pressed", String(on)); }
+function setAuto(on) {
+  ctl.auto = on;
+  ctl.autoY = scrollY;
+  autoBtn.setAttribute("aria-pressed", String(on));
+}
 function setCam(i) {
   ctl.cam = i;
   document.querySelectorAll("[data-cam]").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.cam === i)));
@@ -333,11 +343,16 @@ POLL.forEach(([k, v], i) => {
 const pollItems = [...pollEl.children];
 const cdEl = $("#cdClock"), countdownEl = $("#countdown");
 
+const inertEls = ["header.bar", "main", "footer.foot", ".skip"].map((s) => $(s)).filter(Boolean);
+function setInert(on) { inertEls.forEach((el) => { el.inert = on; }); countdownEl.inert = !on; }
+setInert(true);
+requestAnimationFrame(() => { if (ctl.phase === "countdown") $("#igniteBtn").focus({ preventScroll: true }); });
 function liftoff() {
   if (ctl.phase === "flight") return;
   ctl.phase = "flight";
   countdownEl.classList.add("is-gone");
   body.classList.remove("is-countdown");
+  setInert(false);
   window.scrollTo(0, 0);
   if (!REDUCE) setAuto(true);
   setCam(0);
@@ -348,6 +363,7 @@ function skipCountdown(scrollTarget) {
   ctl.phase = "flight";
   countdownEl.classList.add("is-gone");
   body.classList.remove("is-countdown");
+  setInert(false);
   if (scrollTarget) requestAnimationFrame(() => scrollTarget.scrollIntoView());
 }
 $("#igniteBtn").addEventListener("click", () => {
@@ -364,41 +380,47 @@ $("#refly").addEventListener("click", () => {
   pollItems.forEach((li) => li.classList.remove("is-on"));
   countdownEl.classList.remove("is-gone");
   body.classList.add("is-countdown");
+  setInert(true);
+  $("#igniteBtn").focus({ preventScroll: true });
   cardIdx = -2;
 });
 
-if (REDUCE || /^#(log|manifest)$/.test(location.hash)) {
-  skipCountdown(location.hash ? $(location.hash) : null);
-}
+const hashTarget = () => (location.hash ? document.getElementById(location.hash.slice(1)) : null);
+if (REDUCE || /^#(log|manifest)$/.test(location.hash)) skipCountdown(hashTarget());
+addEventListener("hashchange", () => { if (ctl.phase === "countdown" && hashTarget()) skipCountdown(hashTarget()); });
 
 // Any manual scroll input cancels auto-fly.
-const cancelAuto = () => { if (ctl.auto) setAuto(false); };
+const cancelAuto = (e) => {
+  if (e && e.target && e.target.closest && e.target.closest("button, a")) return;
+  if (ctl.auto) setAuto(false);
+};
 addEventListener("wheel", cancelAuto, { passive: true });
-addEventListener("touchstart", cancelAuto, { passive: true });
+addEventListener("touchmove", cancelAuto, { passive: true });
+addEventListener("hashchange", () => { if (ctl.auto) setAuto(false); });
 addEventListener("keydown", (e) => {
   if (e.target.closest && e.target.closest("input, textarea")) return;
   if (["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].includes(e.key)) cancelAuto();
   if (e.key >= "1" && e.key <= "4") setCam(+e.key - 1);
   else if (e.key === "a" || e.key === "A") { if (ctl.phase === "flight") setAuto(!ctl.auto); }
   else if (e.key === "m" || e.key === "M") soundBtn.click();
-  else if (e.key === "Enter" && ctl.phase === "countdown" && document.activeElement === body) $("#igniteBtn").click();
 });
 
 function trackLen() { return Math.max(1, hud.track.offsetHeight - innerHeight); }
 
 /* Real next launch (from Gemini's launch-manifest.js) */
-let realNext = null;
+let realNext = null, realNextT = NaN;
+const rnClock = $("[data-rn-clock]");
 setTimeout(() => {
   try {
     const p = window.LaunchManifest && window.LaunchManifest.next;
-    if (p && p.then) p.then((l) => { if (l && l.net) { realNext = l; const el = $("#realNext"); el.hidden = false; setText($("[data-rn-name]", el), l.name || ""); } }).catch(() => {});
+    if (p && p.then) p.then((l) => { if (l && l.net && !isNaN(Date.parse(l.net))) { realNext = l; realNextT = Date.parse(l.net); const el = $("#realNext"); el.hidden = false; setText($("[data-rn-name]", el), l.name || ""); } }).catch(() => {});
   } catch (e) { /* manifest optional */ }
 }, 1200);
 function tickRealNext() {
   if (!realNext) return;
-  const dt = (Date.parse(realNext.net) - Date.now()) / 1000;
+  const dt = (realNextT - Date.now()) / 1000;
   const s = Math.abs(dt), d = Math.floor(s / 86400);
-  setText($("[data-rn-clock]"), (dt >= 0 ? "T-" : "T+") + String(d).padStart(2, "0") + ":" + fmtClock(s % 86400));
+  setText(rnClock, (dt >= 0 ? "T-" : "T+") + String(d).padStart(2, "0") + ":" + fmtClock(s % 86400));
 }
 
 /* ------------------------------------------------------------------------ */
@@ -493,10 +515,14 @@ function frame(now) {
   } else {
     const L = trackLen();
     if (ctl.auto) {
-      const speed = L / 110; // whole flight in ~110 s
-      const y = Math.min(L, scrollY + speed * dt);
-      window.scrollTo(0, y);
-      if (y >= L - 1) setAuto(false);
+      // Someone else moved the page (scrollbar drag, anchor jump): yield.
+      if (Math.abs(scrollY - Math.round(ctl.autoY)) > 3) setAuto(false);
+      else {
+        // Float accumulator: at 120 Hz+ a frame's step can be < 1 px.
+        ctl.autoY = Math.min(L, ctl.autoY + (L / 110) * dt); // whole flight in ~110 s
+        window.scrollTo(0, ctl.autoY);
+        if (ctl.autoY >= L - 1) setAuto(false);
+      }
     }
     ctl.p = clamp(scrollY / L);
     ctl.met = metFromP(ctl.p);
@@ -1276,6 +1302,7 @@ async function initScene() {
       }
     }
     if (t > T_SEP + 1 && t < 172 && Math.random() < 0.35 && booster.visible) {
+      booster.updateMatrixWorld();
       emitP.copy(bTop); bInner.localToWorld(emitP); world.worldToLocal(emitP);
       const side = Math.random() < 0.5 ? 1 : -1;
       puffs.emit(emitP.x, emitP.y, emitP.z, side * 2.2, 0, side * 0.6, 0.5, 0.1, 0.7, 0);
@@ -1289,16 +1316,16 @@ async function initScene() {
     const el = hud.pip;
     if (!el.classList.contains("is-on")) return null;
     const r = el.getBoundingClientRect();
-    if (r.width < 20 || getComputedStyle(el).display === "none") return null;
+    if (r.width < 20) return null;
     pipBox.x = r.left + 1; pipBox.y = r.top + 1; pipBox.w = r.width - 2; pipBox.h = r.height - 2;
     return pipBox;
   }
-  const pipPos = V3(), pipTgt = V3();
+  const pipPos = V3(), pipTgt = V3(), pipSave = [V3(), V3(), V3()];
   const pipECam = new THREE.PerspectiveCamera(70, 1.6, 0.05, 40000);
   function renderPip(st, time, box) {
     const t = st.t, b = st.b;
     // re-centre the world on the booster
-    const saveS2 = s2.position.clone(), saveB = booster.position.clone(), saveG = ground.position.clone();
+    const saveS2 = pipSave[0].copy(s2.position), saveB = pipSave[1].copy(booster.position), saveG = pipSave[2].copy(ground.position);
     const saveBV = booster.visible;
     booster.position.set(0, 0, 0);
     booster.visible = true;
@@ -1338,6 +1365,7 @@ async function initScene() {
     // restore
     s2.position.copy(saveS2); booster.position.copy(saveB); ground.position.copy(saveG);
     s2.visible = true; booster.visible = saveBV;
+    booster.updateMatrixWorld(); s2.updateMatrixWorld(); ground.updateMatrixWorld();
     exhaust.points.visible = trail.points.visible = puffs.points.visible = true;
   }
 

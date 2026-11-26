@@ -143,6 +143,11 @@ a live manifest of real upcoming rocket launches.
   Cloudflare edge cache and stale fallback. When the Worker isn't present (e.g.
   local static hosting), `launch-manifest.js` falls back directly to Launch
   Library 2 with a 20-minute `localStorage` cache.
+  Launch Library's free tier is rate-limited **per IP**, and Worker egress IPs
+  are shared, so the Worker often gets `429`. It then backs off for 10 minutes
+  and visitors' browsers call Launch Library directly (their own quota), so the
+  manifest keeps working. To serve it from the edge reliably, add a paid key:
+  `npx wrangler secret put LL2_API_KEY` (sent as `Authorization: Token …`).
 - **Last-launch replay**: `/api/launches?scope=previous` (30-minute edge cache;
   60-minute `localStorage` fallback when the Worker is absent) renders the most
   recent completed orbital launch (or latest SpaceX launch when filtered) with

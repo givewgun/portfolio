@@ -147,6 +147,20 @@ export async function handleLaunches(request, env, ctx) {
     }
   }
 
+  // After a 429 we back off for a while instead of re-hitting LL2 on every
+  // visit (its free tier is per-IP and Worker egress IPs are shared).
+  const cooldownKey = new Request(cfg.cacheKeyUrl + "/cooldown", { method: "GET" });
+  if (!cached && cache) {
+    let cooling = null;
+    try { cooling = await cache.match(cooldownKey); } catch (_) { cooling = null; }
+    if (cooling) {
+      return makeClientResponse(
+        JSON.stringify({ error: "Launch manifest upstream rate-limited", upstream: 429 }),
+        503, "COOLDOWN", isHead
+      );
+    }
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -157,6 +171,8 @@ export async function handleLaunches(request, env, ctx) {
       headers: {
         "user-agent": USER_AGENT,
         accept: "application/json",
+        // Optional paid LL2 key (wrangler secret put LL2_API_KEY) lifts the per-IP limit.
+        ...(env && env.LL2_API_KEY ? { authorization: `Token ${env.LL2_API_KEY}` } : {}),
       },
       signal: controller.signal,
     });
@@ -168,6 +184,10 @@ export async function handleLaunches(request, env, ctx) {
   }
 
   if (!upstream || !upstream.ok) {
+    if (upstream && upstream.status === 429 && cache) {
+      const mark = cache.put(cooldownKey, new Response("1", { headers: { "cache-control": "public, max-age=600" } })).catch(() => {});
+      if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(mark); else await mark;
+    }
     if (cached) {
       const staleBody = await cached.text();
       return makeClientResponse(staleBody, 200, "STALE", isHead);

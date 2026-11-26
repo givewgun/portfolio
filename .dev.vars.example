@@ -7,3 +7,7 @@ GEMINI_API_KEY=your-gemini-api-key-here
 
 # Optional: override the text model used for RPG-flavored Arcane wording.
 # GEMINI_TEXT_MODEL=gemini-2.5-flash
+
+# Optional: paid Launch Library 2 key for /api/launches (free tier is per-IP and
+# Worker IPs are shared, so it is often rate-limited without one).
+# LL2_API_KEY=your-ll2-key

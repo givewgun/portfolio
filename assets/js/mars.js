@@ -392,10 +392,10 @@
     if (kind === "win") {
       const acc = Math.max(0, 1 - Math.abs(g.x - g.padX) / (g.padW / 2));
       const score = Math.round(500 + fuel * 4 + acc * 300 + (2.5 - Math.abs(g.vy)) * 80);
-      setText(over.title, Math.abs(g.vy) < 1 && acc > 0.8 ? "Bullseye. The booster has landed." : "The booster has landed.");
+      setText(over.title, (autopilot ? "Autopilot: " : "") + (Math.abs(g.vy) < 1 && acc > 0.8 ? "Bullseye. The booster has landed." : "The booster has landed."));
       setText(over.body, `Touchdown at ${vs} m/s, ${Math.abs(g.x - g.padX).toFixed(1)} m from centre, ${fuel}% propellant left. Score ${score}.`);
       const b = best();
-      if (!b || score > b.score) { try { localStorage.setItem("marsLanderBest", JSON.stringify({ score, vs, fuel })); } catch (e) { /* private mode */ } }
+      if (!autopilot && (!b || score > b.score)) { try { localStorage.setItem("marsLanderBest", JSON.stringify({ score, vs, fuel })); } catch (e) { /* private mode */ } }
     } else {
       setText(over.title, kind === "rud" ? "Rapid unscheduled disassembly." : kind === "off" ? "Landed — just not on the pad." : "Lost the vehicle.");
       setText(over.body, msg + " Press R or try again.");
@@ -406,9 +406,23 @@
     if (visible) over.btn.focus({ preventScroll: true });
   }
 
+  /** Autopilot (P): steer over the pad, then fly a suicide-burn profile down. */
+  let autopilot = false;
+  function pilot(g) {
+    const alt = g.y - terrain(g.x), dx = g.padX - g.x;
+    const wantVx = alt < 40 ? clamp(dx * 0.3, -1.2, 1.2) : clamp(dx * 0.1, -14, 14);
+    const ax = clamp((wantVx - g.vx) * 0.9, -MAX_ACC * 0.3, MAX_ACC * 0.3);
+    const wantAng = alt < 8 ? 0 : clamp(Math.asin(clamp(ax / MAX_ACC, -0.3, 0.3)), -0.3, 0.3);
+    keys.left = g.ang > wantAng + 0.015;
+    keys.right = g.ang < wantAng - 0.015;
+    const target = -Math.max(0.9, Math.sqrt(2 * 5.0 * Math.max(alt - 3, 0)));
+    keys.thrust = g.vy < target || (alt < 60 && Math.abs(g.vx - wantVx) > 3);
+  }
+
   function step(dt) {
     const g = game;
     g.t += dt;
+    if (autopilot) pilot(g);
     const thrusting = keys.thrust && g.fuel > 0;
     g.thr = lerp(g.thr, thrusting ? 1 : 0, 1 - Math.pow(0.0005, dt));
     if (thrusting) g.fuel = Math.max(0, g.fuel - dt / BURN_S);
@@ -628,6 +642,12 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.target.closest && e.target.closest("input, textarea, select, a, button:not(#landStart)")) return;
     if ((e.key === "r" || e.key === "R") && visible) { newGame(); kick(); return; }
+    if ((e.key === "p" || e.key === "P") && visible) {
+      autopilot = !autopilot;
+      if (!autopilot) keys.thrust = keys.left = keys.right = false;
+      if (autopilot && !inGame()) { newGame(); kick(); }
+      return;
+    }
     const k = map[e.key];
     if (!k) return;
     if (!inGame()) {

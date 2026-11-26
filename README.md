@@ -71,18 +71,21 @@ Cloudflare DNS add a `CNAME` record for `givewgun.com` → `<user>.github.io`
 ```
 index.html                         # markup shell (mostly empty placeholders)
 launch.html                        # Flight Profile (career launch + live manifest)
+mars.html                          # Mars mission planner: live Earth–Mars transfer window from real orbital elements, Hohmann transfer animation, and a playable propulsive landing
 assets/css/styles.css              # design system, layout, every section, theme tokens
 assets/css/space-scene.css         # WebGL stage
 assets/css/mission-ui.css          # command palette, toasts, ISS radar
 assets/css/launch.css              # Flight Profile HUD, countdown, mission log
 assets/css/launch-manifest.css     # live launch manifest cards & footer ticker
+assets/css/mars.css                # Mars mission planner: live Earth–Mars transfer window from real orbital elements, Hohmann transfer animation, and a playable propulsive landing
 assets/js/data.js                  # ← YOUR CONTENT lives here
 assets/js/main.js                  # renders data.js; scroll/counter/card effects
-assets/js/space-scene.js           # WebGL cosmos (ES module) + 2D fallback + warp
+assets/js/space-scene.js           # WebGL cosmos (ES module) + 2D fallback + warp + satellite train
 assets/js/tandem-orbit.js          # binary-star visual in the launch spotlight
 assets/js/mission-ui.js            # ⌘K palette, easter eggs, ISS ground-track radar
 assets/js/launch-flight.js         # WebGL rocket launch, telemetry HUD, booster PiP
-assets/js/launch-manifest.js       # live upcoming launches & footer next-launch ticker
+assets/js/launch-manifest.js       # live upcoming launches, last-launch replay & footer ticker
+assets/js/mars.js                  # Mars mission planner: live Earth–Mars transfer window from real orbital elements, Hohmann transfer animation, and a playable propulsive landing
 assets/js/resume.js                # generates the résumé PDF on the fly from data.js
 assets/js/arcane.js                # AI-generated background for the opt-in Arcane theme
 assets/vendor/three.module.min.js  # Three.js r170, self-hosted (no CDN)
@@ -104,8 +107,12 @@ CNAME                              # custom domain for GitHub Pages
   pair, plus an ocean mask for sun glint). 2K loads first, 4K swaps in on
   desktop. Visitors can drag the globe to spin it (with inertia).
 - **Warp drive**: ⌘K → "Engage warp drive", the Konami code, or type `warp`.
+- **Satellite train**: a Starlink-style string of satellites glides across the
+  upper sky automatically every ~45–90 s (first pass ~6–10 s after load; disabled
+  automatically under `prefers-reduced-motion`). Trigger on demand via ⌘K →
+  "Summon satellite train", type `train`, or call `SpaceScene.satelliteTrain()`.
 - **⌘K / Ctrl K palette**: jump to sections, copy email or the npm install
-  command, download the résumé, switch theme.
+  command, download the résumé, switch theme, or jump to `launch.html` / `mars.html`.
 - **ISS radar** (footer): live position from `api.wheretheiss.at`, ground
   track and distance to Bangkok; polls only while visible.
 
@@ -136,11 +143,25 @@ a live manifest of real upcoming rocket launches.
   Cloudflare edge cache and stale fallback. When the Worker isn't present (e.g.
   local static hosting), `launch-manifest.js` falls back directly to Launch
   Library 2 with a 20-minute `localStorage` cache.
+- **Last-launch replay**: `/api/launches?scope=previous` (30-minute edge cache;
+  60-minute `localStorage` fallback when the Worker is absent) renders the most
+  recent completed orbital launch (or latest SpaceX launch when filtered) with
+  outcome status, time elapsed (`T+ … ago`), and a click-to-load
+  `youtube-nocookie.com` webcast facade (or plain link for non-YouTube feeds).
 - **Footer next-launch ticker**: `index.html` displays the next real upcoming
   launch with a live countdown in the footer alongside the ISS radar, backed by
   the same manifest feed.
 - **Still mode (`?og`)**: `launch.html?og` renders a chrome-free still frame
   for social-card screenshots (combinable with `?at=<event-slug>`).
+
+## Mars (`mars.html`)
+
+Mars mission planner: live Earth–Mars transfer window from real orbital
+elements, Hohmann transfer animation, and a playable propulsive landing (also
+reachable via ⌘K → "Plan a Mars mission").
+
+- **Controls**: **`↑`** / **`W`** / **`Space`** thrust, **`←`**/**`→`** or
+  **`A`**/**`D`** rotate, on-screen buttons on touch, **`R`** restart.
 
 ## Social preview
 

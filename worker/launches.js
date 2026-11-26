@@ -1,12 +1,24 @@
 /*
- * /api/launches — proxies and slims Launch Library 2 (v2.3.0) upcoming orbital
- * launches with Cloudflare Cache API (15-minute freshness + stale fallback).
+ * /api/launches — proxies and slims Launch Library 2 (v2.3.0) orbital launches
+ * with Cloudflare Cache API (stale fallback on upstream failure).
+ *   - default (upcoming): limit=12, 15-min freshness
+ *   - ?scope=previous:    limit=8,  30-min freshness
  */
 
-const UPSTREAM_URL =
-  "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&mode=detailed&hide_recent_previous=true";
-const CACHE_KEY_URL = "https://cache.internal/api/launches/v1";
-const FRESH_MS = 15 * 60 * 1000;
+const SCOPES = {
+  upcoming: {
+    upstreamUrl:
+      "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&mode=detailed&hide_recent_previous=true",
+    cacheKeyUrl: "https://cache.internal/api/launches/v1",
+    freshMs: 15 * 60 * 1000,
+  },
+  previous: {
+    upstreamUrl:
+      "https://ll.thespacedevs.com/2.3.0/launches/previous/?limit=8&mode=detailed",
+    cacheKeyUrl: "https://cache.internal/api/launches/previous/v1",
+    freshMs: 30 * 60 * 1000,
+  },
+};
 const STALE_MAX_AGE_S = 86400; // keep in edge cache for 24h as stale fallback
 const CLIENT_MAX_AGE_S = 300;
 const TIMEOUT_MS = 8000;
@@ -14,6 +26,15 @@ const USER_AGENT = "givewgun-portfolio/1.0";
 
 function safeUrl(value) {
   return typeof value === "string" && /^https?:\/\//i.test(value) ? value : null;
+}
+
+function isYouTubeUrl(urlStr) {
+  try {
+    const h = new URL(urlStr).hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
+    return h === "youtube.com" || h === "youtu.be" || h === "youtube-nocookie.com";
+  } catch (_) {
+    return false;
+  }
 }
 
 function pickImage(image) {
@@ -27,12 +48,15 @@ function pickImage(image) {
 
 function pickVid(vidUrls) {
   if (!Array.isArray(vidUrls) || !vidUrls.length) return null;
+  let firstValid = null;
   for (const item of vidUrls) {
     const u = typeof item === "string" ? item : item && item.url;
     const valid = safeUrl(u);
-    if (valid) return valid;
+    if (!valid) continue;
+    if (isYouTubeUrl(valid)) return valid;
+    if (!firstValid) firstValid = valid;
   }
-  return null;
+  return firstValid;
 }
 
 function projectLaunch(raw) {
@@ -99,9 +123,12 @@ export async function handleLaunches(request, env, ctx) {
     });
   }
   const isHead = method === "HEAD";
+  const reqUrl = new URL(request.url);
+  const scopeKey = reqUrl.searchParams.get("scope") === "previous" ? "previous" : "upcoming";
+  const cfg = SCOPES[scopeKey];
 
   const cache = typeof caches !== "undefined" && caches.default ? caches.default : null;
-  const cacheKey = new Request(CACHE_KEY_URL, { method: "GET" });
+  const cacheKey = new Request(cfg.cacheKeyUrl, { method: "GET" });
 
   let cached = null;
   if (cache) {
@@ -114,7 +141,7 @@ export async function handleLaunches(request, env, ctx) {
 
   if (cached) {
     const cachedAt = Number(cached.headers.get("x-cached-at") || 0);
-    if (cachedAt > 0 && Date.now() - cachedAt < FRESH_MS) {
+    if (cachedAt > 0 && Date.now() - cachedAt < cfg.freshMs) {
       const body = await cached.text();
       return makeClientResponse(body, 200, "HIT", isHead);
     }
@@ -125,7 +152,7 @@ export async function handleLaunches(request, env, ctx) {
 
   let upstream;
   try {
-    upstream = await fetch(UPSTREAM_URL, {
+    upstream = await fetch(cfg.upstreamUrl, {
       headers: {
         "user-agent": USER_AGENT,
         accept: "application/json",

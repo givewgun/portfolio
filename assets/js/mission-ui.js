@@ -30,6 +30,8 @@
     terminal: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
     theme: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18"/>',
     warp: '<path d="M12 3 9.5 9.5 3 12l6.5 2.5L12 21l2.5-6.5L21 12l-6.5-2.5Z"/>',
+    train: '<circle cx="5" cy="17" r="1.4"/><circle cx="9.6" cy="13.7" r="1.4"/><circle cx="14.3" cy="10.3" r="1.4"/><circle cx="19" cy="7" r="1.4"/>',
+    mars: '<circle cx="10" cy="14" r="6"/><path d="m14.5 9.5 5.5-5.5M15 4h5v5"/>',
     iss: '<circle cx="12" cy="12" r="2"/><path d="M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7"/>',
     rocket: '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>',
   };
@@ -74,6 +76,13 @@
   function dispatchWarp() {
     document.dispatchEvent(new CustomEvent("space:warp"));
     showToast("Hyperspace engaged ✦");
+  }
+
+  function dispatchSatelliteTrain() {
+    const api = window.SpaceScene || window.spaceScene;
+    if (api && typeof api.satelliteTrain === "function") api.satelliteTrain();
+    else document.dispatchEvent(new CustomEvent("space:train"));
+    showToast("Satellite train inbound");
   }
 
   function applyTheme(id) {
@@ -166,6 +175,9 @@
     add("Navigate", "Open launch manifest", "launches upcoming schedule countdown spacex ll2 manifest", "rocket", "#manifest", () => {
       window.location.href = "launch.html#manifest";
     });
+    add("Navigate", "Plan a Mars mission", "mars window hohmann landing game", "mars", "mars.html", () => {
+      window.location.href = "mars.html";
+    });
 
     if (contact.email) {
       add("Actions", "Copy email", "mail contact address " + contact.email, "copy", "Copy", () => {
@@ -213,6 +225,7 @@
     });
 
     add("Fun", "Engage warp drive", "hyperspace stars space speed easter egg", "warp", "✦", dispatchWarp);
+    add("Fun", "Summon satellite train", "starlink train satellites", "train", "•••", dispatchSatelliteTrain);
     add("Fun", "Where is the ISS?", "space station orbit radar telemetry satellite horizon", "iss", "ISS", focusIssRadar);
     return cmds;
   }
@@ -550,7 +563,7 @@
   }
 
   /* ---- Global Keys, Easter Eggs & Console Greeting ------------------------ */
-  let konamiIdx = 0, warpBuf = "", greeted = false;
+  let konamiIdx = 0, keyBuf = "", greeted = false;
 
   function onGlobalKeyDown(e) {
     if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k") {
@@ -564,14 +577,15 @@
 
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (k === KONAMI[konamiIdx]) {
-      if (++konamiIdx === KONAMI.length) { konamiIdx = 0; warpBuf = ""; dispatchWarp(); return; }
+      if (++konamiIdx === KONAMI.length) { konamiIdx = 0; keyBuf = ""; dispatchWarp(); return; }
     } else {
       konamiIdx = (konamiIdx === 2 && k === KONAMI[0]) ? 2 : (k === KONAMI[0] ? 1 : 0);
     }
 
     if (/^[a-z]$/.test(k)) {
-      warpBuf = (warpBuf + k).slice(-4);
-      if (warpBuf === "warp") { warpBuf = ""; dispatchWarp(); }
+      keyBuf = (keyBuf + k).slice(-5);
+      if (keyBuf.endsWith("warp")) { keyBuf = ""; dispatchWarp(); }
+      else if (keyBuf === "train") { keyBuf = ""; dispatchSatelliteTrain(); }
     }
   }
 

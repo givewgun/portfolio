@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Mission Planning: Mars — Gun Kaewngarm</title>
+  <meta name="description" content="When is the next Earth–Mars transfer window? A live planner built on real orbital elements, a Hohmann transfer you can fly, and a propulsive Mars landing you can try yourself." />
+  <meta name="theme-color" content="#0b0604" />
+  <meta name="color-scheme" content="dark" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Mission Planning: Mars" />
+  <meta property="og:description" content="A live Earth–Mars transfer-window planner from real orbital elements — and a Mars landing you can try to stick." />
+  <meta property="og:url" content="https://givewgun.com/mars.html" />
+  <meta property="og:image" content="https://givewgun.com/assets/og-mars.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://givewgun.com/assets/og-mars.png" />
+  <link rel="canonical" href="https://givewgun.com/mars.html" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/launch.css" />
+  <link rel="stylesheet" href="assets/css/mars.css" />
+</head>
+<body class="mars">
+  <a href="#plannerText" class="skip">Skip to the window summary</a>
+
+  <header class="bar">
+    <a class="bar__home" href="index.html" aria-label="Back to givewgun.com">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <span>GIVEWGUN.COM</span>
+    </a>
+    <div class="bar__title">
+      <span class="bar__live bar__live--mars"><i></i>PLANNING</span>
+      <span>NEXT MISSION</span>
+      <span class="bar__sep">/</span>
+      <span>MARS</span>
+    </div>
+    <div class="bar__actions">
+      <a class="pill" href="launch.html">FLIGHT PROFILE</a>
+      <a class="pill pill--solid" href="#land">LAND IT</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ================= Transfer-window planner ================= -->
+    <section class="planner" id="planner" aria-labelledby="plannerTitle">
+      <canvas class="orrery" id="orrery" aria-hidden="true"></canvas>
+
+      <div class="planner__copy">
+        <p class="kicker">MISSION PLANNING · LIVE EPHEMERIS</p>
+        <h1 id="plannerTitle">The Mars window</h1>
+        <p class="lede">Earth and Mars line up for a cheap transfer once every ~26 months. Miss it and you wait. This is where the planets are right now, computed from JPL orbital elements in your browser.</p>
+        <div class="window" id="plannerText" aria-live="polite">
+          <p class="window__state" data-w-state>COMPUTING…</p>
+          <p class="window__big" data-w-big>—</p>
+          <p class="window__sub" data-w-sub></p>
+        </div>
+      </div>
+
+      <div class="readouts" aria-label="Orbital readouts">
+        <div><span>DATE</span><b data-r-date>—</b></div>
+        <div><span>PHASE ANGLE</span><b data-r-phase>—</b><em>target 44°</em></div>
+        <div><span>EARTH → MARS</span><b data-r-dist>—</b><em data-r-light></em></div>
+        <div><span>TRANSFER</span><b data-r-tof>—</b><em>Hohmann, min-energy</em></div>
+      </div>
+
+      <div class="scrub">
+        <button type="button" class="pill" id="nowBtn">NOW</button>
+        <input type="range" id="dateRange" min="-730" max="1460" step="1" value="0" aria-label="Days from today" />
+        <button type="button" class="pill" id="windowBtn">NEXT WINDOW</button>
+        <button type="button" class="ignite ignite--sm" id="flyBtn">FLY TRANSFER ▸</button>
+      </div>
+    </section>
+
+    <!-- ================= Lander ================= -->
+    <section class="land" id="land" aria-labelledby="landTitle">
+      <div class="wrap land__head">
+        <p class="kicker">ENTRY, DESCENT &amp; LANDING</p>
+        <h2 id="landTitle">Now land it.</h2>
+        <p class="lede">Seven minutes of terror, compressed. The booster falls toward Jezero at 90 m/s. One engine, limited propellant, thin air. Touch down on the pad under 2.5 m/s, upright.</p>
+      </div>
+      <div class="lander" id="lander">
+        <canvas id="landerCanvas" aria-label="Mars landing game. Use the up arrow or space to fire the engine, left and right arrows to rotate." role="img"></canvas>
+        <div class="lhud" aria-hidden="true">
+          <div><span>ALT</span><b data-l-alt>0</b><i>M</i></div>
+          <div><span>V/S</span><b data-l-vs>0</b><i>M/S</i></div>
+          <div><span>H/S</span><b data-l-hs>0</b><i>M/S</i></div>
+          <div><span>TILT</span><b data-l-tilt>0</b><i>°</i></div>
+          <div class="lhud__fuel"><span>PROP</span><em><s data-l-fuel></s></em></div>
+        </div>
+        <div class="lover" id="landerOverlay" aria-live="polite">
+          <p class="lover__kicker" data-lo-kicker>EDL · ATTEMPT 1</p>
+          <p class="lover__title" data-lo-title>Ready for descent</p>
+          <p class="lover__body" data-lo-body>↑ / W / SPACE fire the engine · ← → or A D rotate · R restart</p>
+          <button type="button" class="ignite" id="landStart">BEGIN DESCENT ▸</button>
+          <p class="lover__best" data-lo-best></p>
+        </div>
+        <div class="touchpad" role="group" aria-label="Touch controls">
+          <button type="button" data-tp="left" aria-label="Rotate left">◀</button>
+          <button type="button" data-tp="thrust" aria-label="Fire engine">THRUST</button>
+          <button type="button" data-tp="right" aria-label="Rotate right">▶</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="log mars-why" aria-labelledby="whyTitle">
+      <div class="wrap">
+        <p class="kicker">WHY THIS IS HERE</p>
+        <h2 id="whyTitle">Windows, margins, and landings</h2>
+        <div class="why">
+          <div><h3>Wait for the window</h3><p>A Hohmann transfer is the cheapest path between two orbits, but only when the geometry is right. Good architecture has windows too: the moment a migration is cheap is rarely the moment someone asks for it.</p></div>
+          <div><h3>Budget the margin</h3><p>Every gram of propellant is decided before launch. Identity platforms serving millions and IoT backends going from 20,000 to 5 million devices get the same treatment: size it, test it, then keep reserve.</p></div>
+          <div><h3>Stick the landing</h3><p>Shipping is the landing burn. Plans are cheap; the last 50 metres are where the engineering shows.</p></div>
+        </div>
+        <div class="log__actions">
+          <a class="pill pill--solid" href="launch.html">▶ WATCH THE FLIGHT PROFILE</a>
+          <a class="pill" href="index.html#contact">OPEN A CHANNEL →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <span>© Gun Kaewngarm · Built with Claude + Gemini in <a href="index.html#tandem">tandem</a></span>
+      <span>Planet positions: JPL "Keplerian Elements for Approximate Positions of the Major Planets" (valid 1800–2050). Transfer times assume an ideal Hohmann transfer. Lander is an original game; not affiliated with any space agency or company.</span>
+    </div>
+  </footer>
+
+  <script src="assets/js/mars.js" defer></script>
+</body>
+</html>

@@ -1,22 +1,52 @@
 /* ==========================================================================
- *  launch-manifest.js — Live Launch Manifest & Footer Next-Launch Ticker
+ *  launch-manifest.js — Live Launch Manifest, Last-Launch Replay & Ticker
  *  Classic script (IIFE, no modules, no libs).
- *  Public API: window.LaunchManifest = { next: Promise<launch|null>, data: Promise<{launches}|null> }
+ *  Public API: window.LaunchManifest = { next, data, previous }
  * ========================================================================== */
 (function () {
   "use strict";
 
   const API_URL = "/api/launches";
+  const PREV_API_URL = "/api/launches?scope=previous";
   const LL2_FALLBACK_URL =
     "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&mode=normal&hide_recent_previous=true";
+  const LL2_PREV_FALLBACK_URL =
+    "https://ll.thespacedevs.com/2.3.0/launches/previous/?limit=8&mode=normal";
   const CACHE_KEY = "lm_launches_v1";
   const CACHE_TTL_MS = 20 * 60 * 1000;
+  const PREV_CACHE_KEY = "lm_launches_prev_v1";
+  const PREV_CACHE_TTL_MS = 60 * 60 * 1000;
   const FETCH_TIMEOUT_MS = 8000;
   const CREDIT_URL = "https://thespacedevs.com";
+  const YT_ID_RE = /^[\w-]{11}$/;
 
   /* ---- Helpers ------------------------------------------------------------ */
   function safeUrl(value) {
     return typeof value === "string" && /^https?:\/\//i.test(value) ? value : null;
+  }
+
+  function extractYouTubeId(urlStr) {
+    const valid = safeUrl(urlStr);
+    if (!valid) return null;
+    let parsed;
+    try {
+      parsed = new URL(valid);
+    } catch (_) {
+      return null;
+    }
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
+    let id = null;
+    if (host === "youtu.be") {
+      id = parsed.pathname.split("/").filter(Boolean)[0] || "";
+    } else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+      if (parsed.pathname === "/watch") {
+        id = parsed.searchParams.get("v");
+      } else {
+        const parts = parsed.pathname.split("/").filter(Boolean);
+        if ((parts[0] === "live" || parts[0] === "embed") && parts[1]) id = parts[1];
+      }
+    }
+    return id && YT_ID_RE.test(id) ? id : null;
   }
 
   function el(tag, className, text) {
@@ -46,8 +76,22 @@
     const a = String(abbrev || "TBD").trim().toUpperCase();
     if (a === "IN FLIGHT" || a === "INFLIGHT") return "live";
     if (a === "GO" || a === "SUCCESS") return "ok";
-    if (a === "HOLD" || a === "FAILURE" || a === "PARTIAL FAILURE") return "hot";
+    if (a === "PARTIAL FAILURE") return "partial";
+    if (a === "FAILURE") return "fail";
+    if (a === "HOLD") return "hot";
     return "dim";
+  }
+
+  function formatElapsedSince(netIso) {
+    const ms = Date.parse(netIso || "");
+    if (!Number.isFinite(ms)) return "T+ —";
+    const diffSec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+    const d = Math.floor(diffSec / 86400);
+    const h = Math.floor((diffSec % 86400) / 3600);
+    const m = Math.floor((diffSec % 3600) / 60);
+    if (d > 0) return "T+ " + d + "d " + h + "h ago";
+    if (h > 0) return "T+ " + h + "h " + m + "m ago";
+    return "T+ " + Math.max(1, m) + "m ago";
   }
 
   function formatCountdown(netIso, compact) {
@@ -111,10 +155,12 @@
       for (let i = 0; i < r.vid_urls.length; i++) {
         const item = r.vid_urls[i];
         const candidate = safeUrl(typeof item === "string" ? item : item && item.url);
-        if (candidate) {
+        if (!candidate) continue;
+        if (extractYouTubeId(candidate)) {
           vid = candidate;
           break;
         }
+        if (!vid) vid = candidate;
       }
     }
 
@@ -145,9 +191,9 @@
     };
   }
 
-  function readCache() {
+  function readCache(key) {
     try {
-      const raw = localStorage.getItem(CACHE_KEY);
+      const raw = localStorage.getItem(key);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed || !parsed.payload || !Array.isArray(parsed.payload.launches)) return null;
@@ -157,9 +203,9 @@
     }
   }
 
-  function writeCache(payload) {
+  function writeCache(key, payload) {
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), payload }));
+      localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), payload }));
     } catch (_) {}
   }
 
@@ -177,26 +223,26 @@
       });
   }
 
-  function loadLaunches() {
-    const cached = readCache();
-    if (cached && cached.savedAt && Date.now() - cached.savedAt < CACHE_TTL_MS && cached.payload.launches.length) {
+  function loadFeed(apiUrl, fallbackUrl, cacheKey, ttlMs) {
+    const cached = readCache(cacheKey);
+    if (cached && cached.savedAt && Date.now() - cached.savedAt < ttlMs && cached.payload.launches.length) {
       return Promise.resolve(cached.payload);
     }
 
-    return fetchJson(API_URL)
+    return fetchJson(apiUrl)
       .then((data) => {
-        if (!data || !Array.isArray(data.launches)) throw new Error("Invalid /api/launches payload");
-        writeCache(data);
+        if (!data || !Array.isArray(data.launches)) throw new Error("Invalid launches payload");
+        writeCache(cacheKey, data);
         return data;
       })
       .catch(() =>
-        fetchJson(LL2_FALLBACK_URL).then((raw) => {
+        fetchJson(fallbackUrl).then((raw) => {
           if (!raw || !Array.isArray(raw.results)) throw new Error("Invalid LL2 payload");
           const payload = {
             updated: new Date().toISOString(),
             launches: raw.results.map(projectRawLaunch),
           };
-          writeCache(payload);
+          writeCache(cacheKey, payload);
           return payload;
         })
       )
@@ -206,9 +252,18 @@
       });
   }
 
+  function loadLaunches() {
+    return loadFeed(API_URL, LL2_FALLBACK_URL, CACHE_KEY, CACHE_TTL_MS);
+  }
+
+  function loadPreviousLaunches() {
+    return loadFeed(PREV_API_URL, LL2_PREV_FALLBACK_URL, PREV_CACHE_KEY, PREV_CACHE_TTL_MS);
+  }
+
   /* ---- Public Promise API (lazy, memoized) -------------------------------- */
   let dataPromise = null;
   let nextPromise = null;
+  let previousPromise = null;
 
   function getDataPromise() {
     if (!dataPromise) dataPromise = loadLaunches();
@@ -224,6 +279,11 @@
     return nextPromise;
   }
 
+  function getPreviousPromise() {
+    if (!previousPromise) previousPromise = loadPreviousLaunches();
+    return previousPromise;
+  }
+
   window.LaunchManifest = {
     get data() {
       return getDataPromise();
@@ -231,10 +291,14 @@
     get next() {
       return getNextPromise();
     },
+    get previous() {
+      return getPreviousPromise();
+    },
   };
 
   /* ---- Shared 1 Hz Countdown Ticker --------------------------------------- */
   let manifestTargets = [];
+  let elapsedTargets = [];
   let tickerTargets = [];
   let tickInterval = null;
   let visibilityWired = false;
@@ -244,6 +308,10 @@
     for (let i = 0; i < manifestTargets.length; i++) {
       const t = manifestTargets[i];
       if (t.el.isConnected) t.el.textContent = formatCountdown(t.net, t.compact);
+    }
+    for (let i = 0; i < elapsedTargets.length; i++) {
+      const t = elapsedTargets[i];
+      if (t.el.isConnected) t.el.textContent = formatElapsedSince(t.net);
     }
     for (let i = 0; i < tickerTargets.length; i++) {
       const t = tickerTargets[i];
@@ -259,7 +327,7 @@
   }
 
   function ensureTicker() {
-    if (!manifestTargets.length && !tickerTargets.length) {
+    if (!manifestTargets.length && !elapsedTargets.length && !tickerTargets.length) {
       stopTicker();
       return;
     }
@@ -268,7 +336,7 @@
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
           stopTicker();
-        } else if (manifestTargets.length || tickerTargets.length) {
+        } else if (manifestTargets.length || elapsedTargets.length || tickerTargets.length) {
           tickNow();
           stopTicker();
           tickInterval = setInterval(tickNow, 1000);
@@ -297,9 +365,108 @@
   function buildStatusPill(status) {
     const abbrev = (status && status.abbrev) || "TBD";
     const full = (status && status.name) || abbrev;
-    const pill = el("span", "lm-pill lm-pill--" + statusTone(abbrev), abbrev.toUpperCase());
+    const upper = abbrev.trim().toUpperCase();
+    const label = upper === "PARTIAL FAILURE" ? "PARTIAL" : upper;
+    const pill = el("span", "lm-pill lm-pill--" + statusTone(abbrev), label);
     pill.title = full;
     return pill;
+  }
+
+  function buildLastLaunchBlock(launch, activeFilter) {
+    const ytId = extractYouTubeId(launch.vid);
+    const vidUrl = safeUrl(launch.vid);
+    const card = el(
+      "article",
+      "lm-replay" + (isSpaceX(launch) ? " lm-replay--sx" : "") + (ytId ? "" : " lm-replay--novid")
+    );
+
+    const top = el("div", "lm-replay__top");
+    const tags = el("div", "lm-replay__tags");
+    tags.appendChild(el("span", "lm-label", activeFilter === "spacex" ? "LAST SPACEX LAUNCH" : "LAST LAUNCH"));
+    tags.appendChild(buildStatusPill(launch.status));
+    if (launch.mission && launch.mission.orbit) {
+      tags.appendChild(el("span", "lm-orbit", "ORBIT · " + launch.mission.orbit));
+    }
+    top.appendChild(tags);
+
+    const elapsedEl = el("span", "lm-replay__elapsed", formatElapsedSince(launch.net));
+    elapsedTargets.push({ el: elapsedEl, net: launch.net });
+    top.appendChild(elapsedEl);
+    card.appendChild(top);
+
+    const body = el("div", "lm-replay__body");
+    const info = el("div", "lm-replay__info");
+    const mName = missionShort(launch);
+    info.appendChild(el("h3", "lm-replay__mission", mName));
+
+    const meta = el("div", "lm-replay__meta");
+    meta.appendChild(el("span", "lm-featured__rocket", rocketName(launch)));
+    meta.appendChild(el("span", "lm-sep", "·"));
+    meta.appendChild(buildProviderNode(launch, "lm-featured__provider"));
+    info.appendChild(meta);
+
+    const padParts = [launch.pad, launch.location].filter(Boolean);
+    if (padParts.length) {
+      info.appendChild(el("div", "lm-replay__pad", padParts.join(" · ")));
+    }
+
+    if (!ytId && vidUrl) {
+      const watch = el("a", "lm-webcast lm-replay__link", "Watch webcast ↗");
+      watch.href = vidUrl;
+      watch.target = "_blank";
+      watch.rel = "noopener noreferrer";
+      info.appendChild(watch);
+    }
+    body.appendChild(info);
+
+    if (ytId) {
+      const media = el("div", "lm-replay__media");
+      const btn = el("button", "lm-facade");
+      btn.type = "button";
+      btn.setAttribute("aria-label", "Play " + mName + " webcast replay");
+
+      const imgUrl = safeUrl(launch.image);
+      if (imgUrl) {
+        const img = document.createElement("img");
+        img.className = "lm-facade__img";
+        img.src = imgUrl;
+        img.alt = "";
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.addEventListener("error", () => {
+          img.hidden = true;
+        });
+        btn.appendChild(img);
+      }
+
+      const scrim = el("span", "lm-facade__scrim");
+      scrim.setAttribute("aria-hidden", "true");
+      btn.appendChild(scrim);
+
+      const cta = el("span", "lm-facade__cta");
+      cta.appendChild(el("span", "", "▶"));
+      cta.appendChild(document.createTextNode("REPLAY WEBCAST"));
+      btn.appendChild(cta);
+
+      btn.addEventListener("click", () => {
+        const iframe = document.createElement("iframe");
+        iframe.className = "lm-replay__iframe";
+        iframe.src = "https://www.youtube-nocookie.com/embed/" + ytId + "?autoplay=1&rel=0";
+        iframe.allow = "autoplay; encrypted-media; picture-in-picture";
+        iframe.allowFullscreen = true;
+        iframe.setAttribute("allowfullscreen", "");
+        iframe.referrerPolicy = "strict-origin-when-cross-origin";
+        iframe.title = mName + " — launch webcast replay";
+        media.textContent = "";
+        media.appendChild(iframe);
+      });
+
+      media.appendChild(btn);
+      body.appendChild(media);
+    }
+
+    card.appendChild(body);
+    return card;
   }
 
   function buildCreditFooter() {
@@ -315,8 +482,9 @@
     return foot;
   }
 
-  function renderManifestOffline(mount) {
+  function renderManifestOffline(mount, previousLaunches) {
     manifestTargets = [];
+    elapsedTargets = [];
     mount.textContent = "";
     const root = el("div", "lm");
 
@@ -333,14 +501,22 @@
       el("span", "lm-offline__msg", "Unable to reach Launch Library 2 right now. Check back shortly.")
     );
     root.appendChild(row);
+    const prevList = Array.isArray(previousLaunches) ? previousLaunches : [];
+    if (prevList.length) {
+      root.appendChild(buildLastLaunchBlock(prevList[0], "all"));
+    }
     root.appendChild(buildCreditFooter());
     mount.appendChild(root);
     ensureTicker();
   }
 
-  function renderManifest(mount, launches, activeFilter) {
+  function renderManifest(mount, launches, previousLaunches, activeFilter, onFilterChange) {
     manifestTargets = [];
+    elapsedTargets = [];
     mount.textContent = "";
+
+    const prevList = Array.isArray(previousLaunches) ? previousLaunches : [];
+    const lastLaunch = activeFilter === "spacex" ? (prevList.find(isSpaceX) || null) : (prevList[0] || null);
 
     const root = el("div", "lm");
 
@@ -363,7 +539,10 @@
       btn.type = "button";
       btn.setAttribute("aria-pressed", String(activeFilter === f.id));
       btn.addEventListener("click", () => {
-        if (activeFilter !== f.id) renderManifest(mount, launches, f.id);
+        if (activeFilter !== f.id) {
+          if (typeof onFilterChange === "function") onFilterChange(f.id);
+          renderManifest(mount, launches, prevList, f.id, onFilterChange);
+        }
       });
       filters.appendChild(btn);
     });
@@ -377,6 +556,9 @@
       empty.appendChild(el("span", "lm-offline__code", "NO MISSIONS MATCHED"));
       empty.appendChild(el("span", "lm-offline__msg", "No SpaceX launches in the current 12-launch window."));
       root.appendChild(empty);
+      if (lastLaunch) {
+        root.appendChild(buildLastLaunchBlock(lastLaunch, activeFilter));
+      }
       root.appendChild(buildCreditFooter());
       mount.appendChild(root);
       ensureTicker();
@@ -444,6 +626,11 @@
 
     feat.appendChild(featBody);
     root.appendChild(feat);
+
+    // "LAST LAUNCH" replay block (above upcoming list)
+    if (lastLaunch) {
+      root.appendChild(buildLastLaunchBlock(lastLaunch, activeFilter));
+    }
 
     // Upcoming list (next ~10)
     const rest = visible.slice(1, 11);
@@ -530,6 +717,24 @@
     const tickerMount = document.getElementById("nextLaunchTicker");
     if (!manifestMount && !tickerMount) return;
 
+    let activeFilter = "all";
+    let upcomingLaunches = [];
+    let previousLaunches = [];
+    let upcomingDone = false;
+
+    const setFilter = (nextFilter) => {
+      activeFilter = nextFilter;
+    };
+
+    const paintManifest = () => {
+      if (!manifestMount || !upcomingDone) return;
+      if (upcomingLaunches.length) {
+        renderManifest(manifestMount, upcomingLaunches, previousLaunches, activeFilter, setFilter);
+      } else {
+        renderManifestOffline(manifestMount, previousLaunches);
+      }
+    };
+
     if (manifestMount) {
       manifestMount.textContent = "";
       const loading = el("div", "lm");
@@ -538,16 +743,20 @@
       row.appendChild(el("span", "lm-offline__msg", "Loading upcoming launch manifest…"));
       loading.appendChild(row);
       manifestMount.appendChild(loading);
+
+      // Fetch previous launches ONLY when #launchManifest is present (never for footer ticker)
+      getPreviousPromise().then((prevPayload) => {
+        previousLaunches = prevPayload && Array.isArray(prevPayload.launches) ? prevPayload.launches : [];
+        if (upcomingDone && previousLaunches.length) paintManifest();
+      });
     }
 
     getDataPromise().then((payload) => {
-      const launches = payload && Array.isArray(payload.launches) ? payload.launches : [];
-      if (manifestMount) {
-        if (launches.length) renderManifest(manifestMount, launches, "all");
-        else renderManifestOffline(manifestMount);
-      }
+      upcomingLaunches = payload && Array.isArray(payload.launches) ? payload.launches : [];
+      upcomingDone = true;
+      paintManifest();
       if (tickerMount) {
-        renderTicker(tickerMount, launches[0] || null);
+        renderTicker(tickerMount, upcomingLaunches[0] || null);
       }
     });
   }

@@ -3,9 +3,10 @@
    Owned by Gemini for Gun Kaewngarm's portfolio revamp.
    Contract:
      - Mounts inside #spaceStage (first child of <body>)
-     - Listens on document: "themechange" ({ detail: { theme } }), "space:warp"
+     - Listens on document: "themechange" ({ detail: { theme } }), "space:warp", "space:train"
      - Dispatches on document: "space:ready" ({ detail: { webgl } })
-     - Exposes window.SpaceScene = { warp, setTheme, isWebGL, pause, resume }
+     - Exposes window.SpaceScene (and lowercase alias window.spaceScene) =
+       { warp, satelliteTrain, setTheme, isWebGL, pause, resume }
    ============================================================================ */
 
 const DEG2RAD = Math.PI / 180;
@@ -14,6 +15,13 @@ const BANGKOK_LON = 100.5018 * DEG2RAD;
 // Put Bangkok / Southeast Asia prominently on the visible front-right face.
 const PLANET_BASE_YAW = -Math.PI * 0.5 - BANGKOK_LON + 14 * DEG2RAD;
 const WARP_DURATION = 2.2;
+const TRAIN_COUNT = 32;
+const TRAIN_DURATION = 14.5;
+const TRAIN_FIRST_MIN = 6;
+const TRAIN_FIRST_MAX = 10;
+const TRAIN_INTERVAL_MIN = 45;
+const TRAIN_INTERVAL_MAX = 90;
+const TRAIN_REDUCED_MS = 2800;
 const AUTO_SPIN_RATE = 0.014;
 const CLOUD_DRIFT_RATE = 0.0042;
 const DRAG_SENS = 0.36 * DEG2RAD; // ~0.36° per CSS pixel
@@ -422,6 +430,50 @@ const SAT_FRAG = /* glsl */ `
   }
 `;
 
+const TRAIN_VERT = /* glsl */ `
+  attribute float aIdx;
+  attribute vec3 aJitter;
+  attribute vec2 aGlint;
+  uniform float uHead, uSpacing, uArcLift, uTime, uPixelRatio, uOpacity;
+  uniform vec3 uStart, uEnd, uPerp;
+  varying float vAlpha;
+  varying float vGlint;
+  void main() {
+    float u = uHead - aIdx * uSpacing + aJitter.x;
+    float visible = step(-0.02, u) * step(u, 1.02);
+    float uc = clamp(u, 0.0, 1.0);
+    vec3 p = mix(uStart, uEnd, uc);
+    p.y += 4.0 * uc * (1.0 - uc) * uArcLift;
+    p += uPerp * aJitter.y;
+    float edgeFade = smoothstep(0.0, 0.14, u) * (1.0 - smoothstep(0.86, 1.0, u));
+    float softWave = 0.5 + 0.5 * sin(uTime * aGlint.y + aGlint.x);
+    float glint = pow(max(0.0, sin(uTime * (aGlint.y * 0.65 + 1.15) + aGlint.x * 1.9 + uc * 10.0)), 14.0);
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    gl_PointSize = clamp((3.4 + 1.5 * aJitter.z + 2.6 * glint) * uPixelRatio * (21.0 / max(-mv.z, 1.0)), 1.6, 11.0) * visible;
+    vAlpha = edgeFade * visible * (0.72 + 0.28 * softWave + 0.65 * glint) * uOpacity;
+    vGlint = glint;
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+
+const TRAIN_FRAG = /* glsl */ `
+  uniform float uLightMode;
+  varying float vAlpha;
+  varying float vGlint;
+  void main() {
+    if (vAlpha <= 0.004) discard;
+    vec2 q = gl_PointCoord - vec2(0.5);
+    float d = length(q);
+    if (d > 0.5) discard;
+    float core = exp(-d * d * 42.0);
+    float halo = (1.0 - smoothstep(0.0, 0.5, d)) * 0.34;
+    float a = clamp((core + halo) * vAlpha, 0.0, 1.0);
+    vec3 darkCol = mix(vec3(0.85, 0.93, 1.0), vec3(1.0, 0.98, 0.92), vGlint);
+    vec3 lightCol = vec3(0.20, 0.40, 0.72);
+    gl_FragColor = vec4(mix(darkCol, lightCol, uLightMode * 0.78), a);
+  }
+`;
+
 /* ── WebGL2 Engine (Three.js r170, 9 draw calls idle / 10 during warp) ───── */
 
 function createWebGLEngine(THREE, stageEl, state, onContextLost, onNeedsRender) {
@@ -514,6 +566,56 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost, onNeedsRender) 
   const warpLines = new THREE.LineSegments(warpGeo, warpMat);
   warpLines.visible = false;
   scene.add(warpLines);
+
+  // 3b. Starlink-style Satellite Train (hidden when idle; 1 draw call during pass, zero per-frame allocations)
+  const tPos = new Float32Array(TRAIN_COUNT * 3);
+  const tIdx = new Float32Array(TRAIN_COUNT);
+  const tJitter = new Float32Array(TRAIN_COUNT * 3);
+  const tGlint = new Float32Array(TRAIN_COUNT * 2);
+  for (let i = 0; i < TRAIN_COUNT; i++) {
+    tIdx[i] = i;
+    tJitter[i * 3] = (Math.random() - 0.5) * 0.0022;      // slight longitudinal jitter
+    tJitter[i * 3 + 1] = (Math.random() - 0.5) * 0.042;   // subtle transverse offset
+    tJitter[i * 3 + 2] = Math.random();                   // tiny size variation
+    tGlint[i * 2] = Math.random() * Math.PI * 2;          // glint phase
+    tGlint[i * 2 + 1] = 1.6 + Math.random() * 2.4;        // glint cadence
+  }
+  const trainGeo = new THREE.BufferGeometry();
+  trainGeo.setAttribute("position", new THREE.BufferAttribute(tPos, 3));
+  trainGeo.setAttribute("aIdx", new THREE.BufferAttribute(tIdx, 1));
+  trainGeo.setAttribute("aJitter", new THREE.BufferAttribute(tJitter, 3));
+  trainGeo.setAttribute("aGlint", new THREE.BufferAttribute(tGlint, 2));
+  const trainMat = new THREE.ShaderMaterial({
+    vertexShader: TRAIN_VERT,
+    fragmentShader: TRAIN_FRAG,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uHead: { value: 0 },
+      uSpacing: { value: 0.0098 },
+      uArcLift: { value: 0.45 },
+      uTime: { value: 0 },
+      uPixelRatio: { value: renderer.getPixelRatio() },
+      uOpacity: { value: 0.96 },
+      uLightMode: { value: 0 },
+      uStart: { value: new THREE.Vector3(-12, 4.5, -14) },
+      uEnd: { value: new THREE.Vector3(12, 6.0, -14) },
+      uPerp: { value: new THREE.Vector3(0, 1, 0) },
+    },
+  });
+  const trainPoints = new THREE.Points(trainGeo, trainMat);
+  trainPoints.visible = false;
+  trainPoints.frustumCulled = false;
+  trainPoints.renderOrder = 0;
+  scene.add(trainPoints);
+
+  let trainBaseOp = 0.96;
+  let lastTrainPassId = -1;
+  let trainDir = 1;
+  let trainY0 = 0.54;
+  let trainY1 = 0.74;
+  let trainArc = 0.055;
 
   // 4. Real NASA Earth (surface + drifting clouds + Rayleigh atmosphere + orbital ring & satellite)
   const planetRoot = new THREE.Group();
@@ -855,6 +957,7 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost, onNeedsRender) 
     isMobile = W < 820;
     for (const l of starLayers) l.mat.uniforms.uPixelRatio.value = pr;
     satMat.uniforms.uPixelRatio.value = pr;
+    trainMat.uniforms.uPixelRatio.value = pr;
     if (isMobile) { planetBase.set(0, -1.62, 0); planetRoot.scale.setScalar(0.60); }
     else { planetBase.set(clamp(camera.aspect * 1.5, 1.65, 3.0), 0.12, 0); planetRoot.scale.setScalar(clamp(camera.aspect * 0.62, 0.76, 1.0)); }
     planetRoot.position.copy(planetBase);
@@ -877,9 +980,13 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost, onNeedsRender) 
     for (const l of starLayers) { l.mat.uniforms.uLightMode.value = lm; l.mat.uniforms.uOpacity.value = light ? l.baseOp * 0.14 : l.baseOp; }
     nebulaMat.opacity = light ? 0.12 : 0.65; nebulaMat.blending = blend; nebulaMat.needsUpdate = true;
     warpMat.uniforms.uOpacity.value = light ? 0.55 : 0.92; warpMat.blending = blend; warpMat.needsUpdate = true;
+    trainBaseOp = light ? 0.62 : 0.96;
+    trainMat.uniforms.uLightMode.value = lm;
+    trainMat.uniforms.uOpacity.value = trainBaseOp;
+    trainMat.blending = blend; trainMat.needsUpdate = true;
   }
 
-  function render(dt, elapsed, warpState) {
+  function render(dt, elapsed, warpState, trainState) {
     sunAccum += dt;
     if (sunAccum >= 60) {
       sunAccum = 0;
@@ -954,6 +1061,49 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost, onNeedsRender) 
       warpMat.uniforms.uWarp.value = warpState.intensity; warpMat.uniforms.uWarpTravel.value = warpTravel;
     } else { warpLines.visible = false; }
 
+    if (trainState && trainState.active) {
+      if (trainState.passId !== lastTrainPassId) {
+        lastTrainPassId = trainState.passId;
+        if (lastTrainPassId <= 1) {
+          trainDir = 1; trainY0 = 0.54; trainY1 = 0.74; trainArc = 0.055;
+        } else {
+          const s1 = Math.sin(lastTrainPassId * 12.9898) * 43758.5453;
+          const s2 = Math.sin(lastTrainPassId * 78.233) * 19341.213;
+          const r1 = s1 - Math.floor(s1);
+          const r2 = s2 - Math.floor(s2);
+          trainDir = lastTrainPassId % 2 === 1 ? 1 : -1;
+          trainY0 = 0.50 + r1 * 0.12;
+          trainY1 = 0.64 + r2 * 0.12;
+          if (trainDir < 0) { const tmp = trainY0; trainY0 = trainY1; trainY1 = tmp; }
+          trainArc = 0.04 + r1 * 0.03;
+        }
+      }
+      const trainZ = -14;
+      const depth = camera.position.z - trainZ;
+      const halfH = depth * Math.tan(camera.fov * 0.5 * DEG2RAD);
+      const halfW = halfH * camera.aspect;
+      const cx = dx * 0.62, cy = dy * 0.62;
+      const sx = cx - trainDir * halfW * 1.12;
+      const ex = cx + trainDir * halfW * 1.12;
+      const sy = cy + trainY0 * halfH;
+      const ey = cy + trainY1 * halfH;
+      const segDx = ex - sx, segDy = ey - sy;
+      const segLen = Math.hypot(segDx, segDy) || 1;
+      const spacing = isMobile ? 0.0145 : 0.0098;
+      const totalSpan = 1 + (TRAIN_COUNT - 1) * spacing;
+      trainPoints.visible = true;
+      trainMat.uniforms.uStart.value.set(sx, sy, trainZ);
+      trainMat.uniforms.uEnd.value.set(ex, ey, trainZ);
+      trainMat.uniforms.uPerp.value.set(-segDy / segLen, segDx / segLen, 0);
+      trainMat.uniforms.uSpacing.value = spacing;
+      trainMat.uniforms.uArcLift.value = trainArc * halfH;
+      trainMat.uniforms.uHead.value = trainState.progress * totalSpan;
+      trainMat.uniforms.uTime.value = elapsed;
+      trainMat.uniforms.uOpacity.value = trainBaseOp * (1 - warpState.intensity * 0.7);
+    } else {
+      trainPoints.visible = false;
+    }
+
     // Sun follows the globe's orientation (auto-spin, drag, tilt): the real
     // subsolar point in Earth's frame → world space for this frame.
     planetSpin.updateWorldMatrix(true, false);
@@ -974,7 +1124,7 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost, onNeedsRender) 
     }
     renderer.domElement.removeEventListener("webglcontextlost", handleLost);
     const toDispose = new Set([
-      nebulaTex, nebulaMat, nebulaMesh.geometry, warpGeo, warpMat,
+      nebulaTex, nebulaMat, nebulaMesh.geometry, warpGeo, warpMat, trainGeo, trainMat,
       planetMesh.geometry, planetMat, cloudMesh.geometry, cloudMat,
       atmoMesh.geometry, atmoMat, ringGeo, ringMat, satGeo, satMat,
       dummyDay, dummyNight, dummyMasks, activeTex.day, activeTex.night, activeTex.masks,
@@ -1003,6 +1153,13 @@ function createFallbackEngine(stageEl, state) {
     depth: 0.35 + Math.random() * 0.65, phase: Math.random() * Math.PI * 2,
     speed: 0.7 + Math.random() * 1.4, color: tints[i % tints.length],
   }));
+  const trainDots = Array.from({ length: 28 }, (_, i) => ({
+    idx: i,
+    jx: (Math.random() - 0.5) * 0.0024,
+    jy: (Math.random() - 0.5) * 2.2,
+    phase: Math.random() * Math.PI * 2,
+    speed: 1.8 + Math.random() * 2.2,
+  }));
 
   let W = 1, H = 1, dpr = 1, isLight = state.theme === "light", palette = state.palette;
 
@@ -1013,7 +1170,7 @@ function createFallbackEngine(stageEl, state) {
 
   function applyTheme(theme, nextPalette) { isLight = theme === "light"; palette = nextPalette; }
 
-  function render(_dt, elapsed, warpState) {
+  function render(_dt, elapsed, warpState, trainState) {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
@@ -1038,6 +1195,31 @@ function createFallbackEngine(stageEl, state) {
       }
     }
     ctx.globalAlpha = 1;
+
+    if (trainState && trainState.active) {
+      const dir = trainState.passId % 2 === 0 ? -1 : 1;
+      const spacing = isMobile ? 0.015 : 0.0105;
+      const head = trainState.progress * (1 + (trainDots.length - 1) * spacing);
+      const x0 = dir > 0 ? -W * 0.05 : W * 1.05;
+      const x1 = dir > 0 ? W * 1.05 : -W * 0.05;
+      const y0 = H * (dir > 0 ? 0.22 : 0.14);
+      const y1 = H * (dir > 0 ? 0.14 : 0.22);
+      ctx.fillStyle = isLight ? "rgb(56,102,178)" : "#eaf3ff";
+      for (let i = 0; i < trainDots.length; i++) {
+        const d = trainDots[i];
+        const u = head - d.idx * spacing + d.jx;
+        if (u < 0 || u > 1) continue;
+        const edge = Math.min(1, u / 0.14) * Math.min(1, (1 - u) / 0.14);
+        const glint = 0.65 + 0.35 * Math.sin(elapsed * d.speed + d.phase);
+        const tx = lerp(x0, x1, u);
+        const ty = lerp(y0, y1, u) - 4 * u * (1 - u) * H * 0.025 + d.jy;
+        ctx.globalAlpha = edge * glint * (isLight ? 0.55 : 0.92);
+        ctx.beginPath();
+        ctx.arc(tx, ty, 1.45, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
 
     const pR = Math.min(W, H) * (isMobile ? 0.17 : 0.21) * lerp(1, 0.4, sp);
     const px = isMobile ? lerp(W * 0.5, W * 0.85, sp) : lerp(W * 0.76, W * 0.95, sp);
@@ -1086,14 +1268,25 @@ async function bootSpaceScene() {
     reducedMotion: Boolean(reducedMq && reducedMq.matches), isTouch: Boolean(coarseMq && coarseMq.matches),
     scroll: getScrollProgress(), mouseX: 0, mouseY: 0, targetMouseX: 0, targetMouseY: 0,
     paused: false, warpActive: false, warpElapsed: 0,
+    trainActive: false, trainElapsed: 0, trainReducedStatic: false, trainPassId: 0,
+    nextTrainAt: TRAIN_FIRST_MIN + Math.random() * (TRAIN_FIRST_MAX - TRAIN_FIRST_MIN),
   };
 
   let engine = null, usingWebGL = false, rafId = 0, lastTs = 0, lastRenderTs = 0, elapsed = 0, readySent = false;
-  let onDemandRaf = 0;
+  let onDemandRaf = 0, reducedTrainTimer = 0;
+  const _warpState = { intensity: 0, flash: 0, fovPunch: 0 };
+  const _trainState = { active: false, progress: 0, passId: 0 };
 
   const syncThemeClasses = (t) => { stageEl.classList.toggle("is-light", t === "light"); stageEl.classList.toggle("is-arcane", t === "arcane"); };
   const shouldAnimate = () => !state.paused && !document.hidden && state.theme !== "arcane" && !state.reducedMotion && engine !== null;
   const stopLoop = () => { if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } };
+
+  function clearTrain() {
+    if (reducedTrainTimer) { clearTimeout(reducedTrainTimer); reducedTrainTimer = 0; }
+    state.trainActive = false;
+    state.trainElapsed = 0;
+    state.trainReducedStatic = false;
+  }
 
   function markReady() {
     if (readySent) return;
@@ -1104,13 +1297,36 @@ async function bootSpaceScene() {
 
   function renderSingleFrame(dt) {
     if (!engine || state.theme === "arcane") return;
-    let warpState = { intensity: 0, flash: 0, fovPunch: 0 };
+    _warpState.intensity = 0; _warpState.flash = 0; _warpState.fovPunch = 0;
     if (state.warpActive) {
       state.warpElapsed += dt;
       if (state.warpElapsed >= WARP_DURATION) { state.warpActive = false; state.warpElapsed = 0; flashEl.style.opacity = "0"; }
-      else { warpState = evaluateWarp(state.warpElapsed); flashEl.style.opacity = warpState.flash.toFixed(3); }
+      else {
+        const w = evaluateWarp(state.warpElapsed);
+        _warpState.intensity = w.intensity; _warpState.flash = w.flash; _warpState.fovPunch = w.fovPunch;
+        flashEl.style.opacity = w.flash.toFixed(3);
+      }
     }
-    engine.render(dt, elapsed, warpState);
+    if (!state.reducedMotion && dt > 0) {
+      if (!state.trainActive && elapsed >= state.nextTrainAt) {
+        state.trainActive = true;
+        state.trainElapsed = 0;
+        state.trainReducedStatic = false;
+        state.trainPassId++;
+      }
+      if (state.trainActive && !state.trainReducedStatic) {
+        state.trainElapsed += dt;
+        if (state.trainElapsed >= TRAIN_DURATION) {
+          state.trainActive = false;
+          state.trainElapsed = 0;
+          state.nextTrainAt = elapsed + TRAIN_INTERVAL_MIN + Math.random() * (TRAIN_INTERVAL_MAX - TRAIN_INTERVAL_MIN);
+        }
+      }
+    }
+    _trainState.active = state.trainActive;
+    _trainState.progress = state.trainReducedStatic ? 0.54 : clamp(state.trainElapsed / TRAIN_DURATION, 0, 1);
+    _trainState.passId = state.trainPassId;
+    engine.render(dt, elapsed, _warpState, _trainState);
     markReady();
   }
 
@@ -1129,7 +1345,7 @@ async function bootSpaceScene() {
     if (!shouldAnimate()) return;
     rafId = requestAnimationFrame(tick);
     const interacting = usingWebGL && engine && engine.isInteracting && engine.isInteracting();
-    if (!state.warpActive && !interacting && (window.scrollY || 0) > window.innerHeight * 2 && ts - lastRenderTs < 32) return;
+    if (!state.warpActive && !state.trainActive && !interacting && (window.scrollY || 0) > window.innerHeight * 2 && ts - lastRenderTs < 32) return;
     lastRenderTs = ts;
     const dt = Math.min(lastTs ? (ts - lastTs) / 1000 : 1 / 60, 0.08);
     lastTs = ts;
@@ -1387,7 +1603,7 @@ async function bootSpaceScene() {
     const t = next || document.documentElement.dataset.theme || "dark";
     state.theme = t; state.palette = readThemePalette(t); syncThemeClasses(t);
     if (t === "arcane") {
-      finishDrag(true); clearHover(); hideHint();
+      finishDrag(true); clearHover(); hideHint(); clearTrain();
       stopLoop(); state.warpActive = false; state.warpElapsed = 0; flashEl.style.opacity = "0";
       return;
     }
@@ -1405,12 +1621,38 @@ async function bootSpaceScene() {
     if (!state.paused) startLoop();
   }
 
+  function satelliteTrain() {
+    if (state.theme === "arcane") return;
+    if (state.reducedMotion) {
+      if (reducedTrainTimer) clearTimeout(reducedTrainTimer);
+      state.trainActive = true;
+      state.trainReducedStatic = true;
+      state.trainPassId++;
+      requestOnDemandRender();
+      reducedTrainTimer = setTimeout(() => {
+        reducedTrainTimer = 0;
+        state.trainActive = false;
+        state.trainReducedStatic = false;
+        requestOnDemandRender();
+      }, TRAIN_REDUCED_MS);
+      return;
+    }
+    if (reducedTrainTimer) { clearTimeout(reducedTrainTimer); reducedTrainTimer = 0; }
+    state.trainReducedStatic = false;
+    state.trainActive = true;
+    state.trainElapsed = 0.4;
+    state.trainPassId++;
+    state.nextTrainAt = elapsed + TRAIN_DURATION + TRAIN_INTERVAL_MIN + Math.random() * (TRAIN_INTERVAL_MAX - TRAIN_INTERVAL_MIN);
+    if (!state.paused) startLoop();
+  }
+
   const pause = () => { state.paused = true; finishDrag(true); clearHover(); stopLoop(); };
   const resume = () => { state.paused = false; startLoop(); };
 
-  const api = { warp, setTheme, pause, resume };
+  const api = { warp, satelliteTrain, setTheme, pause, resume };
   Object.defineProperty(api, "isWebGL", { enumerable: true, get: () => usingWebGL });
   window.SpaceScene = api;
+  window.spaceScene = api;
 
   syncThemeClasses(state.theme);
   engine.resize(stageEl.clientWidth || window.innerWidth, stageEl.clientHeight || window.innerHeight);
@@ -1435,11 +1677,12 @@ async function bootSpaceScene() {
   });
   document.addEventListener("themechange", (e) => setTheme(e && e.detail && e.detail.theme ? e.detail.theme : document.documentElement.dataset.theme));
   document.addEventListener("space:warp", warp);
+  document.addEventListener("space:train", satelliteTrain);
 
   if (reducedMq && reducedMq.addEventListener) {
     reducedMq.addEventListener("change", (e) => {
       state.reducedMotion = e.matches;
-      if (state.reducedMotion) { stopLoop(); state.warpActive = false; flashEl.style.opacity = "0"; if (state.theme !== "arcane") renderSingleFrame(0); }
+      if (state.reducedMotion) { stopLoop(); clearTrain(); state.warpActive = false; flashEl.style.opacity = "0"; if (state.theme !== "arcane") renderSingleFrame(0); }
       else startLoop();
     });
   }

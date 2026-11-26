@@ -1,0 +1,128 @@
+/* ==========================================================================
+   mars.html — Mission planning: Mars
+   Builds on launch.css tokens (bar, pill, kicker, wrap, log, foot, ignite).
+   ========================================================================== */
+body.mars {
+  --mars: #e0703a;
+  --mars-soft: rgba(224, 112, 58, 0.14);
+  --earth: #5aa7ff;
+  background: #050304;
+}
+.bar__live--mars { color: var(--mars); }
+.bar__live--mars i { background: var(--mars); box-shadow: 0 0 10px var(--mars); }
+.bar { background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent); }
+
+/* ---------- Planner ---------- */
+.planner {
+  position: relative; min-height: 100svh; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); grid-template-rows: 1fr auto;
+  gap: 24px var(--pad); padding: calc(var(--pad) + 64px) var(--pad) var(--pad);
+}
+.orrery { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; cursor: grab; }
+.orrery:active { cursor: grabbing; }
+.planner > *:not(.orrery) { position: relative; z-index: 1; }
+.planner__copy { align-self: start; max-width: 460px; pointer-events: none; }
+.planner__copy > * { pointer-events: auto; }
+.planner h1 { margin: 0; font: 600 clamp(40px, 6vw, 76px)/1 var(--font-display); letter-spacing: -0.03em; }
+.planner .kicker { color: var(--mars); }
+.planner .lede { color: #c2b5ab; }
+
+.window { margin-top: 28px; padding: 16px 0 0; border-top: 1px solid var(--line); }
+.window__state { margin: 0; font: 700 11px var(--font-mono); letter-spacing: 0.22em; color: var(--mars); }
+.window__state.is-open { color: var(--ok); }
+.window__big { margin: 8px 0 0; font: 500 clamp(30px, 4vw, 48px)/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.window__sub { margin: 8px 0 0; font: 500 11px var(--font-mono); letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; }
+
+.readouts {
+  align-self: start; display: grid; gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 3px; overflow: hidden; backdrop-filter: blur(6px);
+}
+.readouts > div { background: rgba(6, 4, 4, 0.72); padding: 12px 14px; display: grid; gap: 4px; }
+.readouts span { font: 500 10px var(--font-mono); letter-spacing: 0.18em; color: var(--dim); }
+.readouts b { font: 500 20px var(--font-mono); font-variant-numeric: tabular-nums; }
+.readouts em { font: 400 10px var(--font-mono); letter-spacing: 0.1em; color: var(--dim); font-style: normal; text-transform: uppercase; }
+
+.scrub {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px; border: 1px solid var(--line); border-radius: 3px; background: rgba(6, 4, 4, 0.6); backdrop-filter: blur(6px);
+}
+.scrub input[type="range"] { flex: 1 1 240px; accent-color: var(--mars); height: 28px; }
+.ignite--sm { padding: 10px 16px; font-size: 11px; }
+
+/* ---------- Lander ---------- */
+.land { position: relative; padding: clamp(60px, 9vw, 110px) 0 clamp(40px, 6vw, 80px); background: #070403; border-top: 1px solid var(--line); }
+.land .kicker { color: var(--mars); }
+.land h2 { margin: 0; font: 600 clamp(32px, 5vw, 56px)/1.05 var(--font-display); letter-spacing: -0.02em; }
+.land__head { margin-bottom: 28px; }
+.lander {
+  position: relative; width: min(1200px, 100% - var(--pad) * 2); margin: 0 auto;
+  height: min(78vh, 720px); min-height: 420px;
+  border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; background: #c48b62;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.lander canvas { display: block; width: 100%; height: 100%; }
+.lander:focus-within { outline: 1px solid var(--mars); }
+.lhud {
+  position: absolute; left: 12px; top: 12px; display: flex; flex-wrap: wrap; gap: 6px; max-width: calc(100% - 24px);
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums; pointer-events: none;
+}
+.lhud > div { background: rgba(10, 5, 3, 0.66); border: 1px solid rgba(255, 255, 255, 0.14); padding: 6px 10px; border-radius: 3px; display: flex; gap: 8px; align-items: baseline; }
+.lhud span { font-size: 9px; letter-spacing: 0.18em; color: #c4ada0; }
+.lhud b { font-size: 16px; font-weight: 500; min-width: 4ch; text-align: right; }
+.lhud i { font-size: 9px; color: #c4ada0; font-style: normal; }
+.lhud b.warn { color: #ffb347; }
+.lhud b.bad { color: #ff5a4a; }
+.lhud b.good { color: var(--ok); }
+.lhud__fuel em { display: block; width: 90px; height: 6px; background: rgba(255, 255, 255, 0.12); align-self: center; }
+.lhud__fuel s { display: block; height: 100%; width: 100%; background: #fff; text-decoration: none; transition: background 0.2s; }
+.lhud__fuel s.low { background: #ff5a4a; }
+
+.lover {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center;
+  background: radial-gradient(70% 60% at 50% 50%, rgba(10, 5, 3, 0.72), rgba(10, 5, 3, 0.35));
+  transition: opacity 0.35s, visibility 0.35s; padding: 20px;
+}
+.lover { z-index: 3; }
+.lover.is-off { opacity: 0; visibility: hidden; pointer-events: none; }
+.touchpad { z-index: 2; }
+.lover__kicker { margin: 0; font: 700 11px var(--font-mono); letter-spacing: 0.22em; color: var(--mars); }
+.lover__title { margin: 0; font: 600 clamp(28px, 4vw, 44px)/1.05 var(--font-display); }
+.lover__body { margin: 0 0 8px; max-width: 46ch; color: #e3d4ca; font-size: 14px; }
+.lover__best { margin: 4px 0 0; font: 500 11px var(--font-mono); letter-spacing: 0.14em; color: #c4ada0; }
+.lover.is-win .lover__kicker { color: var(--ok); }
+.lover.is-fail .lover__kicker { color: #ff5a4a; }
+
+.touchpad { position: absolute; left: 0; right: 0; bottom: 12px; display: none; justify-content: space-between; padding: 0 12px; pointer-events: none; }
+.touchpad button {
+  pointer-events: auto; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(10, 5, 3, 0.55); color: #fff;
+  border-radius: 4px; font: 700 13px var(--font-mono); letter-spacing: 0.14em; min-width: 72px; height: 64px; touch-action: none;
+}
+.touchpad button[data-tp="thrust"] { flex: 0 1 46%; border-color: var(--hot); color: var(--hot); }
+.touchpad button.is-down { background: rgba(255, 255, 255, 0.2); }
+@media (pointer: coarse) { .touchpad { display: flex; } }
+
+/* ---------- Why ---------- */
+.mars-why { background: #050304; }
+.mars-why .kicker { color: var(--mars); }
+.why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 36px; }
+.why h3 { margin: 0 0 8px; font: 600 19px/1.25 var(--font-display); }
+.why p { margin: 0; color: #c9bfb7; }
+
+@media (max-width: 900px) {
+  .planner { grid-template-columns: 1fr; grid-template-rows: auto auto auto; padding-top: calc(var(--pad) + 96px); }
+  .readouts { grid-template-columns: 1fr 1fr; }
+  .planner__copy { max-width: none; }
+  .why { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .readouts b { font-size: 16px; }
+  .lhud b { font-size: 13px; }
+  .lhud__fuel em { width: 54px; }
+}
+
+/* Mid-width desktops: readouts move to a row so they don't cover the planets */
+@media (min-width: 901px) and (max-width: 1400px) {
+  .planner { grid-template-columns: 1fr; grid-template-rows: 1fr auto auto; }
+  .readouts { grid-column: 1 / -1; grid-template-columns: repeat(4, 1fr); align-self: end; }
+  .readouts > div { padding: 10px 14px; }
+}

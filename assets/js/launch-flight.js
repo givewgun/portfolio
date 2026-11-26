@@ -265,46 +265,98 @@ function flash(a) { if (!REDUCE) flashLevel = Math.max(flashLevel, a); }
 /* Audio (synthesised, off by default)                                      */
 /* ------------------------------------------------------------------------ */
 const audio = {
-  ctx: null, on: false,
+  ctx: null, on: false, beeped: -1,
   init() {
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
     const ctx = (this.ctx = new AC());
     const len = ctx.sampleRate * 2;
     const brown = ctx.createBuffer(1, len, ctx.sampleRate), white = ctx.createBuffer(1, len, ctx.sampleRate);
     const b = brown.getChannelData(0), w = white.getChannelData(0);
-    let last = 0;
-    for (let i = 0; i < len; i++) { const r = Math.random() * 2 - 1; w[i] = r; last = (last + 0.02 * r) / 1.02; b[i] = last * 3.5; }
+    let last = 0, peak = 0;
+    for (let i = 0; i < len; i++) { const r = Math.random() * 2 - 1; w[i] = r; last = (last + 0.02 * r) / 1.02; b[i] = last; peak = Math.max(peak, Math.abs(last)); }
+    for (let i = 0; i < len; i++) b[i] /= peak || 1; // normalise brown noise to ±1
     const src = (buf) => { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.start(); return s; };
-    this.master = ctx.createGain(); this.master.gain.value = 0; this.master.connect(ctx.destination);
-    this.lp = ctx.createBiquadFilter(); this.lp.type = "lowpass"; this.lp.frequency.value = 200;
+    // master → compressor → speakers (keeps the roar loud without clipping)
+    this.comp = ctx.createDynamicsCompressor();
+    this.comp.threshold.value = -18; this.comp.ratio.value = 6; this.comp.attack.value = 0.005; this.comp.release.value = 0.2;
+    this.comp.connect(ctx.destination);
+    this.master = ctx.createGain(); this.master.gain.value = 0; this.master.connect(this.comp);
+    // 1) rumble: brown noise, low-passed, then soft-clipped so it has harmonics
+    //    laptop/phone speakers can actually reproduce (they roll off below ~200 Hz)
+    this.lp = ctx.createBiquadFilter(); this.lp.type = "lowpass"; this.lp.frequency.value = 300;
+    const shaper = ctx.createWaveShaper();
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < 1024; i++) { const x = (i / 1023) * 2 - 1; curve[i] = Math.tanh(3.2 * x); }
+    shaper.curve = curve; shaper.oversample = "2x";
     this.rumble = ctx.createGain(); this.rumble.gain.value = 0;
-    src(brown).connect(this.lp); this.lp.connect(this.rumble); this.rumble.connect(this.master);
-    this.hp = ctx.createBiquadFilter(); this.hp.type = "bandpass"; this.hp.frequency.value = 1400; this.hp.Q.value = 0.6;
+    src(brown).connect(this.lp); this.lp.connect(shaper); shaper.connect(this.rumble); this.rumble.connect(this.master);
+    // 2) roar: white noise band around 300–900 Hz, the "body" of a launch on small speakers
+    this.bp = ctx.createBiquadFilter(); this.bp.type = "bandpass"; this.bp.frequency.value = 450; this.bp.Q.value = 0.55;
+    this.roar = ctx.createGain(); this.roar.gain.value = 0;
+    src(white).connect(this.bp); this.bp.connect(this.roar); this.roar.connect(this.master);
+    // 3) crackle: high band, amplitude-jittered every frame
+    this.hp = ctx.createBiquadFilter(); this.hp.type = "bandpass"; this.hp.frequency.value = 2200; this.hp.Q.value = 0.7;
     this.crackle = ctx.createGain(); this.crackle.gain.value = 0;
     src(white).connect(this.hp); this.hp.connect(this.crackle); this.crackle.connect(this.master);
+    // 4) hiss: pre-launch venting / quiet ambience
+    this.hf = ctx.createBiquadFilter(); this.hf.type = "highpass"; this.hf.frequency.value = 3500;
+    this.hiss = ctx.createGain(); this.hiss.gain.value = 0;
+    src(white).connect(this.hf); this.hf.connect(this.hiss); this.hiss.connect(this.master);
     return true;
   },
   toggle() {
     if (!this.ctx && !this.init()) return false;
     this.on = !this.on;
     if (this.ctx.state === "suspended") this.ctx.resume();
-    this.master.gain.setTargetAtTime(this.on ? 0.9 : 0, this.ctx.currentTime, 0.15);
+    this.master.gain.setTargetAtTime(this.on ? 1 : 0, this.ctx.currentTime, 0.12);
+    try { localStorage.setItem("flightSound", this.on ? "1" : "0"); } catch (e) { /* private mode */ }
+    if (this.on) this.beep(660, 0.08, 0.25); // audible confirmation
     return this.on;
   },
-  update(thr, atm) {
+  /** thr 0–1 engine throttle, atm 0–1 air density at the listener, vent 0–1 pre-launch venting */
+  update(thr, atm, vent = 0) {
     if (!this.on) return;
-    const t = this.ctx.currentTime;
-    this.rumble.gain.setTargetAtTime(thr * (0.12 + 0.88 * atm) * 0.85, t, 0.08);
-    this.lp.frequency.setTargetAtTime(110 + 520 * atm * thr, t, 0.1);
-    this.crackle.gain.setTargetAtTime(thr * atm * (0.02 + Math.random() * 0.16), t, 0.02);
+    const t = this.ctx.currentTime, a = 0.25 + 0.75 * atm;
+    this.rumble.gain.setTargetAtTime(thr * a * 0.55, t, 0.08);
+    this.lp.frequency.setTargetAtTime(160 + 520 * atm * thr, t, 0.1);
+    this.roar.gain.setTargetAtTime(thr * a * 0.9, t, 0.08);
+    this.bp.frequency.setTargetAtTime(320 + 380 * atm, t, 0.2);
+    this.crackle.gain.setTargetAtTime(thr * atm * (0.04 + Math.random() * 0.32), t, 0.015);
+    this.hiss.gain.setTargetAtTime(0.025 + vent * 0.12, t, 0.2);
+  },
+  beep(freq = 880, dur = 0.07, vol = 0.22) {
+    if (!this.on) return;
+    const ctx = this.ctx, t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.02);
   },
   thump(strength = 1) {
     if (!this.on) return;
     const ctx = this.ctx, t = ctx.currentTime;
     const o = ctx.createOscillator(), g = ctx.createGain();
-    o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(28, t + 0.5);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.7 * strength, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
-    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.8);
+    o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.45);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9 * strength, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.7);
+    // short noise burst so it reads on small speakers too
+    const n = ctx.createBufferSource(); n.buffer = this.burstBuf || (this.burstBuf = (() => {
+      const bf = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate), d = bf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+      return bf;
+    })());
+    const ng = ctx.createGain(); ng.gain.value = 0.5 * strength;
+    n.connect(ng); ng.connect(this.master); n.start(t);
+  },
+  clank() { // tower arms closing on the booster
+    if (!this.on) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    [523, 1307, 2210].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = i ? "square" : "triangle"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18 / (i + 1), t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5 - i * 0.12);
+      o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.6);
+    });
+    this.thump(0.5);
   },
 };
 
@@ -334,7 +386,26 @@ function setCam(i) {
 }
 document.querySelectorAll("[data-cam]").forEach((b) => b.addEventListener("click", () => setCam(+b.dataset.cam)));
 autoBtn.addEventListener("click", () => setAuto(!ctl.auto));
-soundBtn.addEventListener("click", () => soundBtn.setAttribute("aria-pressed", String(audio.toggle())));
+const cdSound = $("#cdSound");
+function syncSoundUI() {
+  soundBtn.setAttribute("aria-pressed", String(audio.on));
+  if (cdSound) { cdSound.setAttribute("aria-pressed", String(audio.on)); cdSound.textContent = audio.on ? "SOUND ON" : "SOUND OFF"; }
+}
+const toggleSound = () => { audio.toggle(); syncSoundUI(); };
+soundBtn.addEventListener("click", toggleSound);
+if (cdSound) cdSound.addEventListener("click", toggleSound);
+// Browsers only start audio after a gesture: if the visitor turned sound on
+// last time, switch it back on at their first click or key press.
+try {
+  if (localStorage.getItem("flightSound") === "1") {
+    const resume = (e) => {
+      if (e.target && e.target.closest && e.target.closest("#soundBtn, #cdSound")) return;
+      removeEventListener("pointerdown", resume, true); removeEventListener("keydown", resume, true);
+      if (!audio.on) { audio.toggle(); syncSoundUI(); }
+    };
+    addEventListener("pointerdown", resume, true); addEventListener("keydown", resume, true);
+  }
+} catch (e) { /* private mode */ }
 
 const POLL = [
   ["PROPULSION", "GO"], ["GUIDANCE", "GO"], ["ARCHITECTURE REVIEW", "GO"], ["CI/CD PIPELINE", "GO"],
@@ -384,7 +455,7 @@ $("#skipToLog").addEventListener("click", () => skipCountdown($("#log")));
 $("#refly").addEventListener("click", () => {
   setAuto(false);
   window.scrollTo(0, 0);
-  ctl.phase = "countdown"; ctl.cdStart = performance.now(); ctl.ignited = false;
+  ctl.phase = "countdown"; ctl.cdStart = performance.now(); ctl.ignited = false; audio.beeped = -1;
   pollItems.forEach((li) => li.classList.remove("is-on"));
   countdownEl.classList.remove("is-gone");
   body.classList.add("is-countdown");
@@ -481,7 +552,8 @@ function updateHud(t, st) {
   if (ctl.phase === "flight") showCard(idx);
   if (idx > lastEvIdx && lastEvIdx >= -1 && ctl.phase === "flight") {
     const code = EVENTS[idx] && EVENTS[idx].code;
-    if (["STAGE SEP", "CATCH"].includes(code)) { flash(0.22); audio.thump(1); st.kick = 1; }
+    if (code === "STAGE SEP") { flash(0.22); audio.thump(1); st.kick = 1; }
+    else if (code === "CATCH") { flash(0.12); audio.clank(); st.kick = 1; }
     else if (["SES-1", "FAIRING SEP", "PAYLOAD DEPLOY"].includes(code)) { flash(0.12); audio.thump(0.6); }
   }
   lastEvIdx = idx;
@@ -534,7 +606,9 @@ function frame(now) {
     const remain = ctl.cdLen - el;
     ctl.met = -Math.max(0, remain);
     ctl.p = 0;
-    setText(cdEl, fmtClock(Math.ceil(Math.max(0, remain))));
+    const sec = Math.ceil(Math.max(0, remain));
+    setText(cdEl, fmtClock(sec));
+    if (sec !== audio.beeped && sec <= 10 && sec > 0) { audio.beeped = sec; audio.beep(sec <= 3 ? 1320 : 880, sec <= 3 ? 0.12 : 0.07); }
     const shown = Math.floor((el / (ctl.cdLen - 0.6)) * POLL.length);
     pollItems.forEach((li, i) => { if (i < shown) li.classList.add("is-on"); });
     if (remain <= 3 && !ctl.ignited) { ctl.ignited = true; audio.thump(0.4); }
@@ -567,7 +641,7 @@ function frame(now) {
   else if (hud.flash.style.opacity !== "0") hud.flash.style.opacity = "0";
 
   const atm = Math.exp(-st.s2.h / 9);
-  audio.update(t < T_SEP ? st.th1 : st.th2 * 0.25, t < T_SEP ? atm : 0.15);
+  audio.update(t < T_SEP ? st.th1 : st.th2 * 0.45, t < T_SEP ? atm : 0.2, t < -0.5 ? 1 : 0);
 
   if (renderFrame && !document.hidden) renderFrame(st, dt, simTime);
   requestAnimationFrame(frame);
@@ -1030,6 +1104,10 @@ async function initScene() {
   }
   earth.renderOrder = 2;
   escene.add(earth);
+  // Gemini's upgrade: 4K textures on desktop + a NASA GIBS high-res patch along the flight path
+  import("./launch-earth-hires.js")
+    .then((m) => m.upgradeEarth({ THREE, renderer, earth, earthMat, mobile: MOBILE, texUrl }))
+    .catch((e) => console.warn("[flight] hi-res earth unavailable", e));
   const atmoMat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     uniforms: { uSun: { value: SUN_E }, uA: { value: 0 } },
@@ -1088,9 +1166,10 @@ async function initScene() {
   // Earth textures (2K, same files the home page uses)
   const loadTex = (f) => new Promise((res) => loader.load(texUrl(f), (t) => { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 4; res(t); }, undefined, () => res(null)));
   Promise.all([loadTex("earth-day-2k.webp"), loadTex("earth-night-2k.webp"), loadTex("earth-masks-2k.webp")]).then(([d, n, m]) => {
-    if (d) earthMat.uniforms.uDay.value = d;
-    if (n) earthMat.uniforms.uNight.value = n;
-    if (m) earthMat.uniforms.uMask.value = m;
+    const U2 = earthMat.uniforms;
+    if (d && U2.uDay.value === blank) U2.uDay.value = d;
+    if (n && U2.uNight.value === blank) U2.uNight.value = n;
+    if (m && U2.uMask.value === blank) U2.uMask.value = m;
     if (d) earthMat.uniforms.uReady.value = 1;
   });
 

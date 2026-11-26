@@ -129,7 +129,8 @@
         .filter((s) => s.nav !== false)
         .map((s) => `<a href="#${s.id}">${esc(s.label)}</a>`)
         .join("") +
-      `<a class="nav__flight" href="launch.html">Flight</a>`;
+      `<a class="nav__flight" href="launch.html">Flight</a>` +
+      `<a class="nav__flight nav__mars" href="mars.html">Mars</a>`;
 
     // Hero. Each word of the name gets a span so CSS can rise it in, staggered.
     $("[data-hero-location]").textContent = D.meta.location;

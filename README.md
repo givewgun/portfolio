@@ -90,6 +90,11 @@ CNAME                         # custom domain for GitHub Pages
   orbit" as you scroll. Falls back to a 2D canvas when WebGL is unavailable,
   pauses in hidden tabs and in the Arcane theme, and renders still frames
   under `prefers-reduced-motion`.
+- **Real Earth**: NASA public-domain imagery in `assets/textures/` (Blue
+  Marble Next Generation day color, Black Marble 2016 night lights, and a
+  packed mask map: cloud alpha derived from the Blue Marble 2002 cloudy/clear
+  pair, plus an ocean mask for sun glint). 2K loads first, 4K swaps in on
+  desktop. Visitors can drag the globe to spin it (with inertia).
 - **Warp drive**: ⌘K → "Engage warp drive", the Konami code, or type `warp`.
 - **⌘K / Ctrl K palette**: jump to sections, copy email or the npm install
   command, download the résumé, switch theme.

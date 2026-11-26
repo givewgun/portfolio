@@ -221,7 +221,7 @@ const portfolioData = {
   launch: {
     name: "tandem",
     // Fallback version; the live one is fetched from npm at runtime.
-    version: "0.4.0",
+    version: "0.5.0",
     when: "Nov 2026",
     title: "Claude Code + Gemini, flying as one team.",
     pitch:

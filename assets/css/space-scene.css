@@ -88,4 +88,52 @@ html[data-theme="light"] .space-stage__flash,
   .space-stage {
     transition: opacity 0.4s ease;
   }
+  .planet-hint {
+    transition: opacity 0.15s ease;
+    transform: none;
+  }
+}
+
+/* Interactive globe drag cursors (toggled by space-scene.js on <html>) */
+html.planet-hover,
+html.planet-hover body {
+  cursor: grab;
+}
+
+html.planet-dragging,
+html.planet-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* First-time subtle hint pill near the globe's lower-left */
+.planet-hint {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--text-soft);
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.planet-hint.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+html[data-theme="arcane"] .planet-hint {
+  display: none;
 }

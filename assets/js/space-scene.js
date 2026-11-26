@@ -9,13 +9,23 @@
    ============================================================================ */
 
 const DEG2RAD = Math.PI / 180;
-const BANGKOK_LAT = 13.7563 * DEG2RAD;
 const BANGKOK_LON = 100.5018 * DEG2RAD;
-const PLANET_BASE_YAW = -(BANGKOK_LON - 28 * DEG2RAD); // Bangkok near visible right limb
+// Equirectangular SphereGeometry: lon 0 is +X, lon -90 is +Z, lon +90 is -Z.
+// Put Bangkok / Southeast Asia prominently on the visible front-right face.
+const PLANET_BASE_YAW = -Math.PI * 0.5 - BANGKOK_LON + 14 * DEG2RAD;
 const WARP_DURATION = 2.2;
+const AUTO_SPIN_RATE = 0.014;
+const CLOUD_DRIFT_RATE = 0.0042;
+const DRAG_SENS = 0.36 * DEG2RAD; // ~0.36° per CSS pixel
+const MAX_TILT = 35 * DEG2RAD;
+const MAX_YAW_VEL = 7.5;
+const DRAG_EXCLUDE =
+  "a,button,input,textarea,select,label,[role=dialog],[contenteditable],p,h1,h2,h3,h4,li,code,kbd,img,canvas,.spot,.nav,.footer,.cmdk-backdrop";
+const HINT_STORAGE_KEY = "planetHintSeen";
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const lerp = (a, b, t) => a + (b - a) * t;
+const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
 
 /* ── Palette, UTC Sun-Sync Math & Baked Nebula ───────────────────────────── */
 
@@ -41,9 +51,21 @@ function readThemePalette(theme) {
   };
 }
 
+/** Unit vector matching THREE.SphereGeometry default equirectangular UVs (lon -180 at u=0, +180 at u=1). */
 function latLonToVec3(lat, lon) {
   const cl = Math.cos(lat);
-  return [cl * Math.sin(lon), Math.sin(lat), cl * Math.cos(lon)];
+  return [cl * Math.cos(lon), Math.sin(lat), -cl * Math.sin(lon)];
+}
+
+/** Subsolar point (solar declination + UTC longitude) as a unit vector in the
+ *  Earth's own frame — the same frame as the texture/geometry. The render loop
+ *  rotates it by the globe's current world orientation every frame, so day and
+ *  night stay on the right continents however the globe is spun or dragged. */
+function subsolarGeo(now) {
+  const doy = (now.getTime() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 86400000 + 1;
+  const decl = -23.44 * DEG2RAD * Math.cos(((2 * Math.PI) / 365.24) * (doy + 10));
+  const utcH = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+  return latLonToVec3(decl, (12 - utcH) * 15 * DEG2RAD);
 }
 
 /** Real-time UTC subsolar vector (solar declination + UTC longitude) in world space. */
@@ -105,7 +127,12 @@ function buildNebulaCanvas(palette) {
   return c;
 }
 
-/* ── GLSL Shaders (Three.js r170 ShaderMaterial — WebGL2 safe, no in/out) ── */
+function isExcludedTarget(target) {
+  const el = target && target.nodeType === 1 ? target : target && target.parentElement;
+  return Boolean(el && el.closest && el.closest(DRAG_EXCLUDE));
+}
+
+/* ── GLSL Shaders (Three.js r170 ShaderMaterial — WebGL2 safe) ───────────── */
 
 const STAR_VERT = /* glsl */ `
   attribute float aSize, aPhase, aSpeed;
@@ -160,10 +187,125 @@ const WARP_FRAG = /* glsl */ `
   void main() { gl_FragColor = vec4(vColor, vAlpha); }
 `;
 
-const SPHERE_VERT = /* glsl */ `
-  varying vec3 vPosLocal, vNormalWorld, vWorldPos;
+const EARTH_VERT = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vPosLocal;
+  varying vec3 vNormalWorld;
+  varying vec3 vWorldPos;
+  varying vec3 vEastWorld;
+  varying vec3 vNorthWorld;
   void main() {
-    vPosLocal = normalize(position);
+    vUv = uv;
+    vec3 p = normalize(position);
+    vPosLocal = p;
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorldPos = wp.xyz;
+    mat3 m3 = mat3(modelMatrix);
+    vNormalWorld = normalize(m3 * normal);
+    vec3 e = cross(vec3(0.0, 1.0, 0.0), p);
+    float el = length(e);
+    e = el > 0.0001 ? e / el : vec3(1.0, 0.0, 0.0);
+    vec3 n = cross(p, e);
+    vEastWorld = normalize(m3 * e);
+    vNorthWorld = normalize(m3 * n);
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+
+// Real Earth surface shader: linear-space shading with hardware sRGB-decoded day/night maps,
+// linear masks (R = cloud alpha, G = ocean mask), encoded back via colorspace_fragment.
+const PLANET_FRAG = /* glsl */ `
+  uniform sampler2D uDayMap;
+  uniform sampler2D uNightMap;
+  uniform sampler2D uMasksMap;
+  uniform vec3 uSunDir;
+  uniform vec3 uAccent;
+  uniform float uLightMode;
+  uniform float uCloudOffset;
+  uniform float uNightReady;
+  uniform float uOpacity;
+  varying vec2 vUv;
+  varying vec3 vPosLocal;
+  varying vec3 vNormalWorld;
+  varying vec3 vWorldPos;
+  varying vec3 vEastWorld;
+  varying vec3 vNorthWorld;
+
+  void main() {
+    vec3 p = normalize(vPosLocal);
+    vec3 N = normalize(vNormalWorld);
+    vec3 V = normalize(cameraPosition - vWorldPos);
+    vec3 L = normalize(mix(uSunDir, normalize(vec3(-0.35, 0.45, 0.82)), uLightMode * 0.72));
+    float eLen = length(vEastWorld);
+    vec3 E = eLen > 0.001 ? vEastWorld / eLen : vec3(1.0, 0.0, 0.0);
+    float bLen = length(vNorthWorld);
+    vec3 B = bLen > 0.001 ? vNorthWorld / bLen : vec3(0.0, 1.0, 0.0);
+
+    vec3 dayCol = texture2D(uDayMap, vUv).rgb;
+    vec3 nightCol = texture2D(uNightMap, vUv).rgb;
+    float ocean = texture2D(uMasksMap, vUv).g;
+
+    // Cloud cover overhead & subtle sun-offset cloud shadow on surface (<= 24% darkening)
+    float ndl = dot(N, L);
+    vec2 cloudUv = vec2(vUv.x - uCloudOffset, vUv.y);
+    float cloudOver = texture2D(uMasksMap, cloudUv).r;
+    float cosLat = max(sqrt(max(1.0 - p.y * p.y, 0.0)), 0.35);
+    float shDist = min(0.0022 / max(ndl, 0.28), 0.0085);
+    vec2 shadowUv = vec2(
+      cloudUv.x + (dot(L, E) * shDist) / (3.14159265 * cosLat),
+      clamp(cloudUv.y + (dot(L, B) * shDist) / 1.57079633, 0.001, 0.999)
+    );
+    float cloudShadow = texture2D(uMasksMap, shadowUv).r * smoothstep(-0.04, 0.20, ndl);
+    float shadowFactor = 1.0 - cloudShadow * 0.24;
+
+    // Smooth Lambert with ~0.1 wrap + soft terminator band
+    float wrapDiff = clamp((ndl + 0.1) / 1.1, 0.0, 1.0);
+    float dayFactor = smoothstep(-0.12, 0.22, ndl);
+    float diffuse = mix(wrapDiff * smoothstep(-0.14, 0.18, ndl), 0.56 + 0.44 * wrapDiff, uLightMode);
+    vec3 lit = dayCol * (mix(0.008, 0.12, uLightMode) + diffuse * mix(1.18, 1.0, uLightMode)) * shadowFactor;
+
+    // Warm orange twilight tint in the terminator strip
+    float tw = (ndl - 0.01) * 5.2;
+    float twilight = exp(-(tw * tw)) * (1.0 - uLightMode * 0.85);
+    lit += (dayCol * vec3(1.0, 0.40, 0.12) * 0.55 + vec3(0.055, 0.016, 0.004)) * twilight * shadowFactor;
+
+    // Modest Blinn-Phong sun-colored ocean specular glint
+    vec3 hv = L + V;
+    float hLen = length(hv);
+    vec3 H = hLen > 0.001 ? hv / hLen : N;
+    float nh = max(dot(N, H), 0.0001);
+    float spec = (pow(nh, 44.0) * 0.28 + pow(nh, 12.0) * 0.045) * ocean * shadowFactor * smoothstep(-0.02, 0.22, ndl);
+    lit += vec3(1.0, 0.94, 0.84) * spec * mix(1.0, 0.42, uLightMode);
+
+    // Black Marble night-side city lights (warm, subtly softened under dense clouds)
+    float nightMask = (1.0 - smoothstep(-0.14, 0.16, ndl)) * (1.0 - uLightMode * 0.94) * uNightReady;
+    lit += nightCol * vec3(1.08, 0.92, 0.72) * nightMask * 1.65 * (1.0 - cloudOver * 0.45);
+
+    // Subtle Rayleigh inner-limb atmospheric veil
+    float ndv = max(dot(N, V), 0.0);
+    float fres = pow(max(1.0 - ndv, 0.0001), 3.4);
+    vec3 rayleigh = mix(vec3(0.14, 0.40, 0.95), uAccent, 0.22);
+    vec3 rimCol = mix(rayleigh, vec3(0.88, 0.34, 0.12), twilight * 0.42);
+    lit += rimCol * fres * mix(0.045 + 0.44 * dayFactor, 0.22, uLightMode);
+
+    // Light-theme sky haze lift so the whole disc stays pleasant on the pale backdrop
+    lit = mix(lit, mix(lit, vec3(0.72, 0.80, 0.92), 0.06), uLightMode);
+
+    // Smooth highlight shoulder above 0.85 (preserves midtone albedo, prevents harsh clipping)
+    lit = lit / (1.0 + max(lit - vec3(0.85), vec3(0.0)));
+
+    gl_FragColor = vec4(lit, uOpacity);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+const SHELL_VERT = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vNormalWorld;
+  varying vec3 vWorldPos;
+  void main() {
+    vUv = uv;
     vec4 wp = modelMatrix * vec4(position, 1.0);
     vWorldPos = wp.xyz;
     vNormalWorld = normalize(mat3(modelMatrix) * normal);
@@ -171,96 +313,74 @@ const SPHERE_VERT = /* glsl */ `
   }
 `;
 
-const PLANET_FRAG = /* glsl */ `
-  uniform vec3 uSunDir, uAccent, uAccent2, uBangkokDir;
-  uniform float uTime, uLightMode;
-  varying vec3 vPosLocal, vNormalWorld, vWorldPos;
-
-  float hash31(vec3 p) {
-    p = fract(p * 0.1031);
-    p += dot(p, p.yzx + 33.33);
-    return fract((p.x + p.y) * p.z);
-  }
-
-  float noise3(vec3 p) {
-    vec3 i = floor(p), f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float n0 = mix(mix(hash31(i), hash31(i + vec3(1.0, 0.0, 0.0)), f.x),
-                   mix(hash31(i + vec3(0.0, 1.0, 0.0)), hash31(i + vec3(1.0, 1.0, 0.0)), f.x), f.y);
-    float n1 = mix(mix(hash31(i + vec3(0.0, 0.0, 1.0)), hash31(i + vec3(1.0, 0.0, 1.0)), f.x),
-                   mix(hash31(i + vec3(0.0, 1.0, 1.0)), hash31(i + vec3(1.0, 1.0, 1.0)), f.x), f.y);
-    return mix(n0, n1, f.z);
-  }
-
-  float fbm(vec3 p) {
-    float v = 0.0, a = 0.5;
-    for (int i = 0; i < 4; i++) {
-      v += a * noise3(p);
-      p = p * 2.04 + vec3(17.1, 31.7, 11.3);
-      a *= 0.5;
-    }
-    return v;
-  }
+const CLOUDS_FRAG = /* glsl */ `
+  uniform sampler2D uMasksMap;
+  uniform vec3 uSunDir;
+  uniform float uLightMode;
+  uniform float uOpacity;
+  varying vec2 vUv;
+  varying vec3 vNormalWorld;
+  varying vec3 vWorldPos;
 
   void main() {
-    vec3 p = normalize(vPosLocal), N = normalize(vNormalWorld);
+    float c = texture2D(uMasksMap, vUv).r;
+    if (c < 0.015) discard;
+    vec3 N = normalize(vNormalWorld);
     vec3 V = normalize(cameraPosition - vWorldPos);
     vec3 L = normalize(mix(uSunDir, normalize(vec3(-0.35, 0.45, 0.82)), uLightMode * 0.72));
 
-    // Procedural continents, oceans, polar ice & drifting cloud bands
-    float baseN = fbm(p * 2.15 + vec3(0.4, -0.2, 1.1));
-    float elev = baseN * 0.68 + fbm(p * 4.4 + vec3(baseN * 0.75)) * 0.32;
-    float land = smoothstep(0.50, 0.545, elev), lat = abs(p.y);
-    float ice = smoothstep(0.77, 0.90, lat + (elev - 0.5) * 0.16);
-    vec3 cp = vec3(p.x * 1.45, p.y * 2.75, p.z * 1.45) + vec3(uTime * 0.011, 0.0, -uTime * 0.007);
-    float clouds = smoothstep(0.52, 0.76, fbm(cp * 1.85 + vec3(2.7, 1.3, -0.8))) * 0.58;
+    float ndl = dot(N, L);
+    float wrap = clamp((ndl + 0.16) / 1.16, 0.0, 1.0);
+    float day = smoothstep(-0.16, 0.24, ndl);
+    float tw = ndl * 4.8;
+    float twilight = exp(-(tw * tw)) * (1.0 - uLightMode * 0.85);
 
-    vec3 seaCol = mix(mix(vec3(0.035, 0.078, 0.165), vec3(0.56, 0.69, 0.86), uLightMode),
-                      mix(vec3(0.075, 0.155, 0.270), vec3(0.66, 0.78, 0.91), uLightMode), smoothstep(0.43, 0.50, elev));
-    vec3 landCol = mix(mix(vec3(0.115, 0.165, 0.165), vec3(0.70, 0.76, 0.79), uLightMode),
-                       mix(vec3(0.220, 0.235, 0.225), vec3(0.79, 0.82, 0.85), uLightMode), smoothstep(0.57, 0.72, elev));
-    vec3 surf = mix(seaCol, landCol, land);
-    surf = mix(surf, mix(vec3(0.68, 0.77, 0.88), vec3(0.92, 0.95, 0.99), uLightMode), ice * 0.75);
-    surf = mix(surf, mix(vec3(0.80, 0.87, 0.96), vec3(0.96, 0.98, 1.00), uLightMode), clouds);
+    vec3 dayCloud = vec3(0.92, 0.95, 1.0);
+    vec3 termCloud = vec3(0.32, 0.40, 0.56);
+    vec3 nightCloud = vec3(0.016, 0.024, 0.042);
 
-    // Sun-synced terminator, ocean glint & warm twilight scatter
-    float ndl = dot(N, L), day = smoothstep(-0.14, 0.24, ndl);
-    float tw = (ndl - 0.02) * 5.0;
-    float twilight = exp(-(tw * tw)) * (1.0 - uLightMode * 0.8);
-    float spec = pow(max(dot(N, normalize(L + V)), 0.0001), 34.0) * (1.0 - land) * (1.0 - clouds) * day;
-    vec3 lit = surf * (mix(0.045, 0.56, uLightMode) + max(ndl, 0.0) * mix(1.08, 0.46, uLightMode));
-    lit += mix(vec3(0.78, 0.88, 1.0), vec3(1.0), uLightMode) * spec * mix(0.26, 0.12, uLightMode);
-    lit += uAccent2 * twilight * 0.18;
+    vec3 col = mix(nightCloud, dayCloud * (0.14 + 0.94 * wrap), day);
+    col = mix(col, termCloud, twilight * 0.45);
+    col += vec3(0.38, 0.16, 0.06) * twilight * 0.18;
+    col = mix(col, mix(vec3(0.76, 0.83, 0.93), vec3(0.96, 0.98, 1.0), 0.35 + 0.65 * wrap), uLightMode);
 
-    // Night-side city-light speckles + subtle Bangkok cluster
-    float nightMask = (1.0 - smoothstep(-0.22, 0.05, ndl)) * (1.0 - uLightMode);
-    float urban = smoothstep(0.505, 0.545, elev) * (1.0 - smoothstep(0.62, 0.74, elev)) * (1.0 - smoothstep(0.56, 0.80, lat));
-    float cities = smoothstep(0.43, 0.66, noise3(p * 19.0) * noise3(p * 37.0 + vec3(4.2))) * urban;
-    vec3 db = p - uBangkokDir;
-    float bkk = exp(-dot(db, db) * 340.0) * 0.85;
-    lit += mix(vec3(1.0, 0.78, 0.46), uAccent2, 0.4) * (cities * 0.95 + bkk) * nightMask * (1.0 - clouds * 0.72);
+    float fres = pow(max(1.0 - max(dot(N, V), 0.0), 0.0001), 3.2);
+    col = mix(col, vec3(0.26, 0.52, 0.96), fres * 0.25 * (1.0 - uLightMode * 0.6));
 
-    // Inner-limb atmospheric veil + light-mode haze lift for text readability
-    float fres = pow(max(1.0 - max(dot(N, V), 0.0), 0.0001), 3.1);
-    lit += mix(uAccent, vec3(0.76, 0.86, 0.98), uLightMode) * fres * mix(0.16 + 0.36 * day, 0.28, uLightMode);
-    lit = mix(lit, mix(lit, vec3(0.89, 0.93, 0.98), 0.34), uLightMode);
-    gl_FragColor = vec4(lit, 1.0);
+    float alpha = c * mix(0.42 + 0.50 * day, 0.62, uLightMode) * uOpacity;
+    gl_FragColor = vec4(col, alpha);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }
 `;
 
 const ATMO_FRAG = /* glsl */ `
-  uniform vec3 uSunDir, uAccent, uAccent2;
+  uniform vec3 uSunDir;
+  uniform vec3 uAccent;
+  uniform vec3 uAccent2;
   uniform float uLightMode;
-  varying vec3 vNormalWorld, vWorldPos;
+  uniform float uOpacity;
+  varying vec3 vNormalWorld;
+  varying vec3 vWorldPos;
+
   void main() {
-    vec3 N = normalize(vNormalWorld), V = normalize(cameraPosition - vWorldPos);
+    vec3 N = normalize(vNormalWorld);
+    vec3 V = normalize(cameraPosition - vWorldPos);
     vec3 L = normalize(mix(uSunDir, normalize(vec3(-0.35, 0.45, 0.82)), uLightMode * 0.72));
-    float rim = pow(clamp(max(-dot(N, V), 0.0) / 0.39, 0.0001, 1.0), 2.5);
-    float st = dot(N, L), sunSide = smoothstep(-0.5, 0.65, st), tw = (st - 0.02) * 4.5;
+    float rim = pow(clamp(max(-dot(N, V), 0.0) / 0.36, 0.0001, 1.0), 2.8);
+    float st = dot(N, L);
+    float sunSide = smoothstep(-0.45, 0.62, st);
+    float tw = (st - 0.02) * 4.5;
     float twilight = exp(-(tw * tw)) * (1.0 - uLightMode);
-    vec3 col = mix(mix(uAccent * 0.45, uAccent * 1.15, sunSide) + uAccent2 * twilight * 0.38,
-                   mix(vec3(0.62, 0.77, 0.95), uAccent, 0.30), uLightMode);
-    gl_FragColor = vec4(col, rim * mix(0.20 + 0.64 * sunSide, 0.32, uLightMode));
+    vec3 rayleigh = mix(vec3(0.12, 0.38, 0.96), uAccent, 0.25);
+    vec3 col = mix(
+      mix(rayleigh * 0.22, rayleigh * 1.05, sunSide) + uAccent2 * twilight * 0.36,
+      mix(vec3(0.32, 0.54, 0.88), uAccent, 0.25),
+      uLightMode
+    );
+    gl_FragColor = vec4(col, rim * mix(0.14 + 0.66 * sunSide, 0.28, uLightMode) * uOpacity);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }
 `;
 
@@ -270,12 +390,12 @@ const RING_VERT = /* glsl */ `
 `;
 
 const RING_FRAG = /* glsl */ `
-  uniform float uSatAngle, uLightMode;
+  uniform float uSatAngle, uLightMode, uOpacity;
   uniform vec3 uColor, uAccent;
   varying vec3 vRingPos;
   void main() {
     float wake = exp(-mod(uSatAngle - atan(vRingPos.z, vRingPos.x) + 6.2831853, 6.2831853) * 2.5);
-    gl_FragColor = vec4(mix(uColor, uAccent, wake * 0.82), mix(0.13, 0.22, uLightMode) + wake * mix(0.55, 0.30, uLightMode));
+    gl_FragColor = vec4(mix(uColor, uAccent, wake * 0.82), (mix(0.13, 0.22, uLightMode) + wake * mix(0.55, 0.30, uLightMode)) * uOpacity);
   }
 `;
 
@@ -292,23 +412,24 @@ const SAT_VERT = /* glsl */ `
 
 const SAT_FRAG = /* glsl */ `
   uniform vec3 uColor;
-  uniform float uLightMode;
+  uniform float uLightMode, uOpacity;
   varying float vPulse;
   void main() {
     float d = length(gl_PointCoord - vec2(0.5));
     if (d > 0.5) discard;
-    float a = (exp(-d * d * 28.0) + (1.0 - smoothstep(0.0, 0.5, d)) * 0.42) * vPulse;
+    float a = (exp(-d * d * 28.0) + (1.0 - smoothstep(0.0, 0.5, d)) * 0.42) * vPulse * uOpacity;
     gl_FragColor = vec4(mix(uColor, vec3(0.24, 0.44, 0.78), uLightMode * 0.72), a);
   }
 `;
 
-/* ── WebGL2 Engine (Three.js r170, 8 draw calls idle / 9 during warp) ────── */
+/* ── WebGL2 Engine (Three.js r170, 9 draw calls idle / 10 during warp) ───── */
 
-function createWebGLEngine(THREE, stageEl, state, onContextLost) {
+function createWebGLEngine(THREE, stageEl, state, onContextLost, onNeedsRender) {
   const dpr = window.devicePixelRatio || 1;
   const renderer = new THREE.WebGLRenderer({ antialias: dpr <= 1.5, alpha: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(dpr, 1.75));
   renderer.setClearColor(0x000000, 0);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.domElement.className = "space-stage__canvas";
   stageEl.appendChild(renderer.domElement);
 
@@ -322,6 +443,7 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
   const nebulaMat = new THREE.MeshBasicMaterial({ map: nebulaTex, transparent: true, opacity: 0.65, depthWrite: false, blending: THREE.AdditiveBlending });
   const nebulaMesh = new THREE.Mesh(new THREE.PlaneGeometry(175, 92), nebulaMat);
   nebulaMesh.position.set(0, 0, -108);
+  nebulaMesh.renderOrder = 0;
   scene.add(nebulaMesh);
 
   // 2. Layered Parallax Starfield (3 depth layers)
@@ -362,6 +484,7 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
       },
     });
     const points = new THREE.Points(geo, mat);
+    points.renderOrder = 0;
     scene.add(points);
     return { points, mat, baseOp: def.op };
   });
@@ -392,37 +515,99 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
   warpLines.visible = false;
   scene.add(warpLines);
 
-  // 4. Procedural Planet, Fresnel Atmosphere, Orbital Ring & Horizon Satellite
-  const planetRoot = new THREE.Group(), planetTilt = new THREE.Group();
+  // 4. Real NASA Earth (surface + drifting clouds + Rayleigh atmosphere + orbital ring & satellite)
+  const planetRoot = new THREE.Group();
+  const planetPitch = new THREE.Group(); // user vertical tilt (eases back to 0)
+  const planetTilt = new THREE.Group();  // default axial obliquity
+  const planetSpin = new THREE.Group();  // shared spin for surface + clouds
   const planetBase = new THREE.Vector3(); // resting spot; scroll offsets are added per frame
   const tiltZ = -11 * DEG2RAD;
   planetTilt.rotation.z = tiltZ;
-  planetRoot.add(planetTilt);
+  planetSpin.rotation.y = PLANET_BASE_YAW;
+  planetTilt.add(planetSpin);
+  planetPitch.add(planetTilt);
+  planetRoot.add(planetPitch);
+  planetRoot.visible = false; // stays hidden until 2k day + masks textures load
   scene.add(planetRoot);
 
   const planetR = 1.52;
-  const bkk = latLonToVec3(BANGKOK_LAT, BANGKOK_LON);
-  const acc = new THREE.Vector3(...state.palette.accent), acc2 = new THREE.Vector3(...state.palette.accent2);
+  const accLin = new THREE.Vector3(...state.palette.accent.map(srgbToLinear));
+  const acc2Lin = new THREE.Vector3(...state.palette.accent2.map(srgbToLinear));
+  const accSrgb = new THREE.Vector3(...state.palette.accent);
   const sun = new THREE.Vector3(...computeSunDirection(new Date(), PLANET_BASE_YAW, tiltZ));
+  const sunGeo = new THREE.Vector3(...subsolarGeo(new Date())); // Earth frame
+  const sunWorld = new THREE.Vector3();
+  const spinQuat = new THREE.Quaternion();
+
+  // 1x1 placeholder textures so uniforms are always valid prior to 2k load
+  const makePlaceholder = (r, g, b, a, isSRGB) => {
+    const t = new THREE.DataTexture(new Uint8Array([r, g, b, a]), 1, 1);
+    t.colorSpace = isSRGB ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    t.needsUpdate = true;
+    return t;
+  };
+  const dummyDay = makePlaceholder(10, 22, 48, 255, true);
+  const dummyNight = makePlaceholder(0, 0, 0, 255, true);
+  const dummyMasks = makePlaceholder(0, 0, 0, 255, false);
+  const activeTex = { day: dummyDay, night: dummyNight, masks: dummyMasks };
+
+  const segW = lowSpec ? 64 : 128;
+  const segH = lowSpec ? 48 : 96;
 
   const planetMat = new THREE.ShaderMaterial({
-    vertexShader: SPHERE_VERT, fragmentShader: PLANET_FRAG,
+    vertexShader: EARTH_VERT,
+    fragmentShader: PLANET_FRAG,
+    transparent: true,
+    depthWrite: true,
     uniforms: {
-      uSunDir: { value: sun.clone() }, uTime: { value: 0 }, uLightMode: { value: 0 },
-      uAccent: { value: acc.clone() }, uAccent2: { value: acc2.clone() },
-      uBangkokDir: { value: new THREE.Vector3(bkk[0], bkk[1], bkk[2]) },
+      uDayMap: { value: dummyDay },
+      uNightMap: { value: dummyNight },
+      uMasksMap: { value: dummyMasks },
+      uSunDir: { value: sun.clone() },
+      uAccent: { value: accLin.clone() },
+      uLightMode: { value: 0 },
+      uCloudOffset: { value: 0 },
+      uNightReady: { value: 0 },
+      uOpacity: { value: 0 },
     },
   });
-  const planetMesh = new THREE.Mesh(new THREE.SphereGeometry(planetR, lowSpec ? 40 : 60, lowSpec ? 32 : 48), planetMat);
-  planetMesh.rotation.y = PLANET_BASE_YAW;
-  planetTilt.add(planetMesh);
+  const planetMesh = new THREE.Mesh(new THREE.SphereGeometry(planetR, segW, segH), planetMat);
+  planetMesh.renderOrder = 1;
+  planetSpin.add(planetMesh);
+
+  const cloudMat = new THREE.ShaderMaterial({
+    vertexShader: SHELL_VERT,
+    fragmentShader: CLOUDS_FRAG,
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uMasksMap: { value: dummyMasks },
+      uSunDir: { value: sun.clone() },
+      uLightMode: { value: 0 },
+      uOpacity: { value: 0 },
+    },
+  });
+  const cloudMesh = new THREE.Mesh(new THREE.SphereGeometry(planetR * 1.008, segW, segH), cloudMat);
+  cloudMesh.renderOrder = 2;
+  planetSpin.add(cloudMesh);
 
   const atmoMat = new THREE.ShaderMaterial({
-    vertexShader: SPHERE_VERT, fragmentShader: ATMO_FRAG,
-    side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uSunDir: { value: sun.clone() }, uAccent: { value: acc.clone() }, uAccent2: { value: acc2.clone() }, uLightMode: { value: 0 } },
+    vertexShader: SHELL_VERT,
+    fragmentShader: ATMO_FRAG,
+    side: THREE.BackSide,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uSunDir: { value: sun.clone() },
+      uAccent: { value: accLin.clone() },
+      uAccent2: { value: acc2Lin.clone() },
+      uLightMode: { value: 0 },
+      uOpacity: { value: 0 },
+    },
   });
-  const atmoMesh = new THREE.Mesh(new THREE.SphereGeometry(planetR * 1.085, lowSpec ? 36 : 48, lowSpec ? 28 : 36), atmoMat);
+  const atmoMesh = new THREE.Mesh(new THREE.SphereGeometry(planetR * 1.068, lowSpec ? 48 : 64, lowSpec ? 36 : 48), atmoMat);
+  atmoMesh.renderOrder = 5;
   planetTilt.add(atmoMesh);
 
   const orbitGroup = new THREE.Group();
@@ -438,22 +623,228 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
   ringGeo.setAttribute("position", new THREE.BufferAttribute(rPos, 3));
   const ringMat = new THREE.ShaderMaterial({
     vertexShader: RING_VERT, fragmentShader: RING_FRAG, transparent: true, depthWrite: false,
-    uniforms: { uSatAngle: { value: 0.7 }, uColor: { value: new THREE.Vector3(0.45, 0.60, 0.85) }, uAccent: { value: acc.clone() }, uLightMode: { value: 0 } },
+    uniforms: {
+      uSatAngle: { value: 0.7 },
+      uColor: { value: new THREE.Vector3(0.45, 0.60, 0.85) },
+      uAccent: { value: accSrgb.clone() },
+      uLightMode: { value: 0 },
+      uOpacity: { value: 0 },
+    },
   });
-  orbitGroup.add(new THREE.LineLoop(ringGeo, ringMat));
+  const ringLine = new THREE.LineLoop(ringGeo, ringMat);
+  ringLine.renderOrder = 3;
+  orbitGroup.add(ringLine);
 
   const satGeo = new THREE.BufferGeometry();
   satGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array([Math.cos(0.7) * ringR, 0, Math.sin(0.7) * ringR]), 3));
   const satMat = new THREE.ShaderMaterial({
     vertexShader: SAT_VERT, fragmentShader: SAT_FRAG, transparent: true, depthWrite: false,
-    uniforms: { uPixelRatio: { value: renderer.getPixelRatio() }, uTime: { value: 0 }, uColor: { value: new THREE.Vector3(0.95, 0.97, 1.0) }, uLightMode: { value: 0 } },
+    uniforms: {
+      uPixelRatio: { value: renderer.getPixelRatio() },
+      uTime: { value: 0 },
+      uColor: { value: new THREE.Vector3(0.95, 0.97, 1.0) },
+      uLightMode: { value: 0 },
+      uOpacity: { value: 0 },
+    },
   });
-  orbitGroup.add(new THREE.Points(satGeo, satMat));
+  const satPoints = new THREE.Points(satGeo, satMat);
+  satPoints.renderOrder = 4;
+  orbitGroup.add(satPoints);
+
+  // Progressive Earth texture loader (2k fast boot -> idle 4k upgrade on desktop)
+  const loader = new THREE.TextureLoader();
+  const maxAniso = renderer.capabilities && renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
+  const texUrl = (file) => new URL(`../textures/${file}`, import.meta.url).href;
+
+  let destroyed = false;
+  let dayLoaded = false, masksLoaded = false, nightLoaded = false;
+  let daySettled = false, masksSettled = false;
+  let planetFade = 0, fadeStarted = false, nightFade = 0;
+  let upgrade4kScheduled = false, idleHandle = 0, idleIsRic = false;
+
+  function configureTexture(tex, isSRGB) {
+    tex.colorSpace = isSRGB ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.anisotropy = maxAniso;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  function swapTexture(slot, tex) {
+    if (destroyed) { tex.dispose(); return; }
+    const prev = activeTex[slot];
+    activeTex[slot] = tex;
+    if (slot === "day") planetMat.uniforms.uDayMap.value = tex;
+    else if (slot === "night") planetMat.uniforms.uNightMap.value = tex;
+    else if (slot === "masks") {
+      planetMat.uniforms.uMasksMap.value = tex;
+      cloudMat.uniforms.uMasksMap.value = tex;
+    }
+    if (prev && prev !== dummyDay && prev !== dummyNight && prev !== dummyMasks) prev.dispose();
+  }
+
+  function setPlanetOpacity(v) {
+    planetMat.uniforms.uOpacity.value = v;
+    cloudMat.uniforms.uOpacity.value = v;
+    atmoMat.uniforms.uOpacity.value = v;
+    ringMat.uniforms.uOpacity.value = v;
+    satMat.uniforms.uOpacity.value = v;
+  }
+
+  function maybeStartFadeIn() {
+    if (destroyed || fadeStarted) return;
+    if ((dayLoaded && masksLoaded) || (daySettled && masksSettled && (dayLoaded || masksLoaded))) {
+      fadeStarted = true;
+      planetRoot.visible = true;
+      if (state.reducedMotion) {
+        planetFade = 1;
+        setPlanetOpacity(1);
+        if (nightLoaded) { nightFade = 1; planetMat.uniforms.uNightReady.value = 1; }
+      }
+      if (onNeedsRender) onNeedsRender();
+    }
+  }
+
+  function schedule4kUpgrade() {
+    if (destroyed || upgrade4kScheduled || lowSpec) return;
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn && conn.saveData) return;
+    if (window.innerWidth < 768) return;
+    upgrade4kScheduled = true;
+
+    const runUpgrade = () => {
+      idleHandle = 0;
+      if (destroyed) return;
+      const load4k = (file, slot, isSRGB) => {
+        loader.load(
+          texUrl(file),
+          (tex) => {
+            configureTexture(tex, isSRGB);
+            swapTexture(slot, tex);
+            if (state.reducedMotion && onNeedsRender) onNeedsRender();
+          },
+          undefined,
+          () => { /* keep 2k silently on error */ }
+        );
+      };
+      load4k("earth-day.webp", "day", true);
+      load4k("earth-masks.webp", "masks", false);
+      load4k("earth-night.webp", "night", true);
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      idleIsRic = true;
+      idleHandle = window.requestIdleCallback(runUpgrade, { timeout: 3000 });
+    } else {
+      idleIsRic = false;
+      idleHandle = window.setTimeout(runUpgrade, 1500);
+    }
+  }
+
+  // Kick off fast 2k set immediately
+  loader.load(
+    texUrl("earth-day-2k.webp"),
+    (tex) => {
+      configureTexture(tex, true);
+      swapTexture("day", tex);
+      dayLoaded = true; daySettled = true;
+      maybeStartFadeIn();
+    },
+    undefined,
+    () => { daySettled = true; maybeStartFadeIn(); }
+  );
+  loader.load(
+    texUrl("earth-masks-2k.webp"),
+    (tex) => {
+      configureTexture(tex, false);
+      swapTexture("masks", tex);
+      masksLoaded = true; masksSettled = true;
+      maybeStartFadeIn();
+    },
+    undefined,
+    () => { masksSettled = true; maybeStartFadeIn(); }
+  );
+  loader.load(
+    texUrl("earth-night-2k.webp"),
+    (tex) => {
+      configureTexture(tex, true);
+      swapTexture("night", tex);
+      nightLoaded = true;
+      if (state.reducedMotion) {
+        nightFade = 1;
+        planetMat.uniforms.uNightReady.value = 1;
+        if (onNeedsRender) onNeedsRender();
+      }
+    },
+    undefined,
+    () => { /* optional: continue without night lights */ }
+  );
 
   const handleLost = (e) => { e.preventDefault(); onContextLost(); };
   renderer.domElement.addEventListener("webglcontextlost", handleLost, false);
 
+  // Spin & drag state
   let isMobile = false, sunAccum = 0, warpTravel = 0, satAngle = 0.7;
+  let spinYaw = PLANET_BASE_YAW;
+  let yawVel = AUTO_SPIN_RATE;
+  let dragPitch = 0;
+  let cloudDrift = 0;
+  let isDragging = false;
+
+  // Scratch vectors for screen-disc projection (zero per-frame allocations)
+  const _centerW = new THREE.Vector3();
+  const _centerV = new THREE.Vector3();
+  const _ndc = new THREE.Vector3();
+
+  function getPlanetScreenDisc() {
+    if (!planetRoot.visible || planetFade < 0.05) return null;
+    camera.updateMatrixWorld();
+    planetRoot.updateWorldMatrix(true, false);
+    _centerW.setFromMatrixPosition(planetRoot.matrixWorld);
+    _centerV.copy(_centerW).applyMatrix4(camera.matrixWorldInverse);
+    const depth = -_centerV.z;
+    const worldR = planetR * planetRoot.scale.x;
+    if (depth <= worldR * 1.05) return null;
+    _ndc.copy(_centerW).project(camera);
+    if (_ndc.z < -1 || _ndc.z > 1) return null;
+    const W = stageEl.clientWidth || window.innerWidth;
+    const H = stageEl.clientHeight || window.innerHeight;
+    const x = (_ndc.x * 0.5 + 0.5) * W;
+    const y = (-_ndc.y * 0.5 + 0.5) * H;
+    const focalPx = (H * 0.5) / Math.tan(camera.fov * 0.5 * DEG2RAD);
+    const r = (worldR * 1.03 * focalPx) / Math.max(depth, 0.001);
+    if (x + r < 0 || x - r > W || y + r < 0 || y - r > H) return null;
+    return { x, y, r };
+  }
+
+  function beginDrag() {
+    isDragging = true;
+    yawVel = 0;
+  }
+
+  function applyDrag(dYaw, dPitch, moveDt) {
+    spinYaw += dYaw;
+    if (dPitch !== 0) dragPitch = clamp(dragPitch + dPitch, -MAX_TILT, MAX_TILT);
+    planetSpin.rotation.y = spinYaw;
+    planetPitch.rotation.x = dragPitch;
+    if (!state.reducedMotion && moveDt > 0) {
+      const instVel = clamp(dYaw / moveDt, -MAX_YAW_VEL, MAX_YAW_VEL);
+      yawVel = lerp(yawVel, instVel, 0.45);
+    }
+  }
+
+  function endDrag(stopMotion) {
+    isDragging = false;
+    if (stopMotion || state.reducedMotion) yawVel = state.reducedMotion ? 0 : AUTO_SPIN_RATE;
+  }
+
+  function isInteracting() {
+    return isDragging || Math.abs(yawVel - AUTO_SPIN_RATE) > 0.02 || Math.abs(dragPitch) > 0.002;
+  }
 
   function resize(w, h) {
     const W = Math.max(1, w), H = Math.max(1, h), pr = Math.min(window.devicePixelRatio || 1, 1.75);
@@ -471,9 +862,14 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
 
   function applyTheme(theme, palette) {
     const light = theme === "light", lm = light ? 1 : 0, blend = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-    for (const m of [planetMat, atmoMat]) {
-      m.uniforms.uLightMode.value = lm; m.uniforms.uAccent.value.set(...palette.accent); m.uniforms.uAccent2.value.set(...palette.accent2);
-    }
+    const linA = palette.accent.map(srgbToLinear);
+    const linA2 = palette.accent2.map(srgbToLinear);
+    planetMat.uniforms.uLightMode.value = lm;
+    planetMat.uniforms.uAccent.value.set(linA[0], linA[1], linA[2]);
+    cloudMat.uniforms.uLightMode.value = lm;
+    atmoMat.uniforms.uLightMode.value = lm;
+    atmoMat.uniforms.uAccent.value.set(linA[0], linA[1], linA[2]);
+    atmoMat.uniforms.uAccent2.value.set(linA2[0], linA2[1], linA2[2]);
     atmoMat.blending = blend; atmoMat.needsUpdate = true;
     ringMat.uniforms.uLightMode.value = lm; ringMat.uniforms.uAccent.value.set(...palette.accent);
     ringMat.uniforms.uColor.value.set(light ? 0.30 : 0.45, light ? 0.44 : 0.60, light ? 0.66 : 0.85);
@@ -487,18 +883,48 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
     sunAccum += dt;
     if (sunAccum >= 60) {
       sunAccum = 0;
-      const s = computeSunDirection(new Date(), PLANET_BASE_YAW, tiltZ);
-      planetMat.uniforms.uSunDir.value.set(s[0], s[1], s[2]);
-      atmoMat.uniforms.uSunDir.value.set(s[0], s[1], s[2]);
+      sunGeo.set(...subsolarGeo(new Date()));
     }
+
+    // Smooth ~0.8s planet fade-in once 2k day + masks are ready
+    if (fadeStarted && planetFade < 1) {
+      planetFade = state.reducedMotion ? 1 : Math.min(1, planetFade + dt / 0.8);
+      const eased = 1 - Math.pow(1 - planetFade, 3);
+      setPlanetOpacity(eased);
+      if (planetFade >= 1) schedule4kUpgrade();
+    } else if (planetFade >= 1 && !upgrade4kScheduled) {
+      schedule4kUpgrade();
+    }
+
+    if (nightLoaded && nightFade < 1) {
+      nightFade = state.reducedMotion ? 1 : Math.min(1, nightFade + dt / 0.45);
+      planetMat.uniforms.uNightReady.value = nightFade;
+    }
+
     if (!state.reducedMotion) {
-      planetMesh.rotation.y = PLANET_BASE_YAW + elapsed * 0.014;
+      if (!isDragging) {
+        // dt-correct friction (~0.94/frame at 60fps), blending seamlessly back into slow auto-rotation
+        const decay = Math.pow(0.94, dt * 60);
+        yawVel = lerp(AUTO_SPIN_RATE, yawVel, decay);
+        spinYaw += yawVel * dt;
+        // Ease vertical drag tilt back to default axial tilt over ~2s
+        if (Math.abs(dragPitch) > 0.0001) {
+          dragPitch *= Math.exp(-dt * 2.2);
+          if (Math.abs(dragPitch) < 0.0001) dragPitch = 0;
+        }
+      }
+      cloudDrift = (cloudDrift + dt * CLOUD_DRIFT_RATE) % (Math.PI * 2);
       satAngle = (satAngle + dt * 0.24) % (Math.PI * 2);
       const attr = satGeo.getAttribute("position");
       attr.setXYZ(0, Math.cos(satAngle) * ringR, 0, Math.sin(satAngle) * ringR);
       attr.needsUpdate = true;
       ringMat.uniforms.uSatAngle.value = satAngle;
     }
+
+    planetSpin.rotation.y = spinYaw;
+    planetPitch.rotation.x = dragPitch;
+    cloudMesh.rotation.y = cloudDrift;
+    planetMat.uniforms.uCloudOffset.value = cloudDrift / (Math.PI * 2);
 
     const sp = state.scroll, fov = baseFov + warpState.fovPunch * 22;
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
@@ -520,26 +946,46 @@ function createWebGLEngine(THREE, stageEl, state, onContextLost) {
       l.mat.uniforms.uTime.value = elapsed; l.mat.uniforms.uWarp.value = warpState.intensity;
       if (!state.reducedMotion) { l.points.rotation.y = elapsed * (0.002 + i * 0.0012); l.points.rotation.x = elapsed * 0.0008; }
     }
-    planetMat.uniforms.uTime.value = elapsed; satMat.uniforms.uTime.value = elapsed;
+    satMat.uniforms.uTime.value = elapsed;
 
     if (warpState.intensity > 0.002 && !state.reducedMotion) {
       warpLines.visible = true;
       warpTravel += dt * (26 + warpState.intensity * 62);
       warpMat.uniforms.uWarp.value = warpState.intensity; warpMat.uniforms.uWarpTravel.value = warpTravel;
     } else { warpLines.visible = false; }
+
+    // Sun follows the globe's orientation (auto-spin, drag, tilt): the real
+    // subsolar point in Earth's frame → world space for this frame.
+    planetSpin.updateWorldMatrix(true, false);
+    planetSpin.getWorldQuaternion(spinQuat);
+    sunWorld.copy(sunGeo).applyQuaternion(spinQuat).normalize();
+    planetMat.uniforms.uSunDir.value.copy(sunWorld);
+    cloudMat.uniforms.uSunDir.value.copy(sunWorld);
+    atmoMat.uniforms.uSunDir.value.copy(sunWorld);
     renderer.render(scene, camera);
   }
 
   function destroy() {
+    destroyed = true;
+    if (idleHandle) {
+      if (idleIsRic && typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleHandle);
+      else window.clearTimeout(idleHandle);
+      idleHandle = 0;
+    }
     renderer.domElement.removeEventListener("webglcontextlost", handleLost);
-    [nebulaTex, nebulaMat, nebulaMesh.geometry, warpGeo, warpMat, planetMesh.geometry, planetMat, atmoMesh.geometry, atmoMat, ringGeo, ringMat, satGeo, satMat]
-      .forEach((o) => o.dispose());
+    const toDispose = new Set([
+      nebulaTex, nebulaMat, nebulaMesh.geometry, warpGeo, warpMat,
+      planetMesh.geometry, planetMat, cloudMesh.geometry, cloudMat,
+      atmoMesh.geometry, atmoMat, ringGeo, ringMat, satGeo, satMat,
+      dummyDay, dummyNight, dummyMasks, activeTex.day, activeTex.night, activeTex.masks,
+    ]);
+    toDispose.forEach((o) => { if (o && o.dispose) o.dispose(); });
     for (const l of starLayers) { l.points.geometry.dispose(); l.mat.dispose(); }
     renderer.dispose();
     if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
   }
 
-  return { resize, applyTheme, render, destroy };
+  return { resize, applyTheme, render, destroy, getPlanetScreenDisc, beginDrag, applyDrag, endDrag, isInteracting };
 }
 
 /* ── 2D Canvas Fallback Engine ───────────────────────────────────────────── */
@@ -632,6 +1078,7 @@ async function bootSpaceScene() {
 
   const reducedMq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
   const coarseMq = window.matchMedia ? window.matchMedia("(pointer: coarse)") : null;
+  const fineMq = window.matchMedia ? window.matchMedia("(pointer: fine)") : null;
   const initTheme = document.documentElement.dataset.theme || "dark";
 
   const state = {
@@ -642,6 +1089,7 @@ async function bootSpaceScene() {
   };
 
   let engine = null, usingWebGL = false, rafId = 0, lastTs = 0, lastRenderTs = 0, elapsed = 0, readySent = false;
+  let onDemandRaf = 0;
 
   const syncThemeClasses = (t) => { stageEl.classList.toggle("is-light", t === "light"); stageEl.classList.toggle("is-arcane", t === "arcane"); };
   const shouldAnimate = () => !state.paused && !document.hidden && state.theme !== "arcane" && !state.reducedMotion && engine !== null;
@@ -666,11 +1114,22 @@ async function bootSpaceScene() {
     markReady();
   }
 
+  function requestOnDemandRender() {
+    if (onDemandRaf || !engine || state.theme === "arcane" || state.paused) return;
+    onDemandRaf = requestAnimationFrame(() => {
+      onDemandRaf = 0;
+      if (!engine || state.theme === "arcane" || state.paused) return;
+      if (state.reducedMotion) state.scroll = getScrollProgress();
+      renderSingleFrame(0);
+    });
+  }
+
   function tick(ts) {
     rafId = 0;
     if (!shouldAnimate()) return;
     rafId = requestAnimationFrame(tick);
-    if (!state.warpActive && (window.scrollY || 0) > window.innerHeight * 2 && ts - lastRenderTs < 32) return;
+    const interacting = usingWebGL && engine && engine.isInteracting && engine.isInteracting();
+    if (!state.warpActive && !interacting && (window.scrollY || 0) > window.innerHeight * 2 && ts - lastRenderTs < 32) return;
     lastRenderTs = ts;
     const dt = Math.min(lastTs ? (ts - lastTs) / 1000 : 1 / 60, 0.08);
     lastTs = ts;
@@ -691,7 +1150,219 @@ async function bootSpaceScene() {
     if (!rafId) { lastTs = 0; rafId = requestAnimationFrame(tick); }
   }
 
+  /* ── Globe Free-Spin Interaction, Hover Cursor & First-Time Hint ───────── */
+
+  const rootEl = document.documentElement;
+  let hintEl = null, hintTimer = 0, hintRemoveTimer = 0, hintShown = false;
+  try { hintShown = localStorage.getItem(HINT_STORAGE_KEY) === "1"; } catch (_) { hintShown = false; }
+
+  function markHintSeen() {
+    hintShown = true;
+    try { localStorage.setItem(HINT_STORAGE_KEY, "1"); } catch (_) { /* ignore */ }
+  }
+
+  function hideHint() {
+    clearTimeout(hintTimer); hintTimer = 0;
+    if (!hintEl) return;
+    hintEl.classList.remove("is-visible");
+    const el = hintEl;
+    hintEl = null;
+    clearTimeout(hintRemoveTimer);
+    hintRemoveTimer = setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 400);
+  }
+
+  function maybeShowHint(disc) {
+    if (hintShown || !disc || state.theme === "arcane" || !usingWebGL) return;
+    if (fineMq && !fineMq.matches) return;
+    markHintSeen();
+    const el = document.createElement("div");
+    el.className = "planet-hint";
+    el.setAttribute("aria-hidden", "true");
+    el.textContent = "⟲ drag to spin";
+    const left = clamp(disc.x - disc.r * 0.74, 14, Math.max(14, window.innerWidth - 148));
+    const top = clamp(disc.y + disc.r * 0.62, 14, Math.max(14, window.innerHeight - 40));
+    el.style.left = `${Math.round(left)}px`;
+    el.style.top = `${Math.round(top)}px`;
+    document.body.appendChild(el);
+    hintEl = el;
+    requestAnimationFrame(() => { if (hintEl === el) el.classList.add("is-visible"); });
+    hintTimer = setTimeout(hideHint, 2500);
+  }
+
+  const drag = {
+    active: false,
+    committed: false,
+    pointerId: -1,
+    isTouch: false,
+    captured: false,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    lastTs: 0,
+  };
+
+  let hoverRaf = 0;
+  let pendingHover = null;
+
+  function canInteract() {
+    return usingWebGL && engine && typeof engine.getPlanetScreenDisc === "function" && state.theme !== "arcane" && !state.paused;
+  }
+
+  function hitTestPlanet(clientX, clientY) {
+    if (!canInteract()) return null;
+    const disc = engine.getPlanetScreenDisc();
+    if (!disc) return null;
+    return Math.hypot(clientX - disc.x, clientY - disc.y) <= disc.r ? disc : null;
+  }
+
+  function clearHover() {
+    rootEl.classList.remove("planet-hover");
+    pendingHover = null;
+    if (hoverRaf) { cancelAnimationFrame(hoverRaf); hoverRaf = 0; }
+  }
+
+  function finishDrag(abort) {
+    if (!drag.active) return;
+    const wasCommitted = drag.committed;
+    const pid = drag.pointerId;
+    const wasCaptured = drag.captured;
+    const stale = performance.now() - drag.lastTs > 85;
+    drag.active = false;
+    drag.committed = false;
+    drag.pointerId = -1;
+    drag.captured = false;
+    rootEl.classList.remove("planet-dragging");
+    if (wasCaptured) {
+      try { rootEl.releasePointerCapture(pid); } catch (_) { /* ignore */ }
+    }
+    if (wasCommitted && usingWebGL && engine && engine.endDrag) {
+      engine.endDrag(abort || stale || state.reducedMotion);
+    }
+  }
+
+  function flushHover() {
+    hoverRaf = 0;
+    const h = pendingHover;
+    pendingHover = null;
+    if (!h || drag.active || !canInteract() || isExcludedTarget(h.target)) {
+      rootEl.classList.remove("planet-hover");
+      return;
+    }
+    const disc = hitTestPlanet(h.x, h.y);
+    rootEl.classList.toggle("planet-hover", Boolean(disc));
+    if (disc && h.pointerType === "mouse") maybeShowHint(disc);
+  }
+
+  document.addEventListener("pointerdown", (e) => {
+    if (drag.active || !canInteract()) return;
+    if (e.isPrimary === false) return;
+    const isTouch = e.pointerType === "touch";
+    if (!isTouch && e.button !== 0) return;
+    if (isExcludedTarget(e.target)) return;
+    const disc = hitTestPlanet(e.clientX, e.clientY);
+    if (!disc) return;
+
+    drag.active = true;
+    drag.pointerId = e.pointerId;
+    drag.isTouch = isTouch;
+    drag.captured = false;
+    drag.startX = e.clientX;
+    drag.startY = e.clientY;
+    drag.lastX = e.clientX;
+    drag.lastY = e.clientY;
+    drag.lastTs = performance.now();
+
+    // Mouse/pen commits immediately; touch waits briefly to distinguish horizontal spin from vertical pan-y scroll
+    if (!isTouch) {
+      drag.committed = true;
+      rootEl.classList.add("planet-dragging");
+      rootEl.classList.remove("planet-hover");
+      hideHint();
+      markHintSeen();
+      try { rootEl.setPointerCapture(e.pointerId); drag.captured = true; } catch (_) { /* ignore */ }
+      engine.beginDrag();
+    } else {
+      drag.committed = false;
+    }
+  });
+
+  window.addEventListener("pointermove", (e) => {
+    if (drag.active && e.pointerId === drag.pointerId) {
+      const now = performance.now();
+      if (drag.isTouch && !drag.committed) {
+        const totalDx = e.clientX - drag.startX;
+        const totalDy = e.clientY - drag.startY;
+        if (Math.abs(totalDy) > 8 && Math.abs(totalDy) >= Math.abs(totalDx)) {
+          // Vertical scroll gesture: bail cleanly without preventing scroll
+          finishDrag(true);
+          return;
+        }
+        if (Math.abs(totalDx) > 6 && Math.abs(totalDx) > Math.abs(totalDy) * 1.15) {
+          drag.committed = true;
+          rootEl.classList.add("planet-dragging");
+          hideHint();
+          markHintSeen();
+          engine.beginDrag();
+          drag.lastX = e.clientX;
+          drag.lastY = e.clientY;
+          drag.lastTs = now;
+        }
+        return;
+      }
+
+      if (!drag.committed) return;
+      const dx = e.clientX - drag.lastX;
+      const dy = e.clientY - drag.lastY;
+      if (!drag.isTouch) {
+        if (e.cancelable) e.preventDefault();
+      } else if (Math.abs(dx) > Math.abs(dy) && e.cancelable) {
+        e.preventDefault();
+      }
+
+      const moveDt = Math.max((now - drag.lastTs) / 1000, 0.004);
+      const dYaw = dx * DRAG_SENS;
+      const dPitch = drag.isTouch ? 0 : dy * DRAG_SENS;
+      engine.applyDrag(dYaw, dPitch, moveDt);
+      drag.lastX = e.clientX;
+      drag.lastY = e.clientY;
+      drag.lastTs = now;
+      if (state.reducedMotion) requestOnDemandRender();
+      return;
+    }
+
+    // Parallax + throttled hover cursor check
+    if (e.pointerType !== "touch") {
+      if (!state.isTouch && !state.reducedMotion) {
+        state.targetMouseX = clamp((e.clientX / (window.innerWidth || 1)) * 2 - 1, -1, 1);
+        state.targetMouseY = clamp(-((e.clientY / (window.innerHeight || 1)) * 2 - 1), -1, 1);
+      }
+      if (canInteract()) {
+        pendingHover = { x: e.clientX, y: e.clientY, target: e.target, pointerType: e.pointerType };
+        if (!hoverRaf) hoverRaf = requestAnimationFrame(flushHover);
+      }
+    }
+  }, { passive: false });
+
+  window.addEventListener("pointerup", (e) => {
+    if (drag.active && e.pointerId === drag.pointerId) finishDrag(false);
+  });
+  window.addEventListener("pointercancel", (e) => {
+    if (drag.active && e.pointerId === drag.pointerId) finishDrag(true);
+  });
+  window.addEventListener("blur", () => { finishDrag(true); clearHover(); });
+  rootEl.addEventListener("pointerleave", clearHover);
+  window.addEventListener("scroll", () => {
+    if (!drag.active) clearHover();
+    if (state.reducedMotion && state.theme !== "arcane" && !state.paused && engine) requestOnDemandRender();
+  }, { passive: true });
+
+  /* ── Engine Boot & Public API ──────────────────────────────────────────── */
+
   function activateFallback() {
+    finishDrag(true);
+    clearHover();
+    hideHint();
     if (engine) { try { engine.destroy(); } catch (_) { /* ignore */ } }
     usingWebGL = false;
     engine = createFallbackEngine(stageEl, state);
@@ -703,7 +1374,7 @@ async function bootSpaceScene() {
 
   try {
     const THREE = await import("../vendor/three.module.min.js");
-    engine = createWebGLEngine(THREE, stageEl, state, activateFallback);
+    engine = createWebGLEngine(THREE, stageEl, state, activateFallback, requestOnDemandRender);
     usingWebGL = true;
     console.info("[space-scene] initialized (WebGL2)");
   } catch (_) {
@@ -715,7 +1386,11 @@ async function bootSpaceScene() {
   function setTheme(next) {
     const t = next || document.documentElement.dataset.theme || "dark";
     state.theme = t; state.palette = readThemePalette(t); syncThemeClasses(t);
-    if (t === "arcane") { stopLoop(); state.warpActive = false; state.warpElapsed = 0; flashEl.style.opacity = "0"; return; }
+    if (t === "arcane") {
+      finishDrag(true); clearHover(); hideHint();
+      stopLoop(); state.warpActive = false; state.warpElapsed = 0; flashEl.style.opacity = "0";
+      return;
+    }
     if (engine) engine.applyTheme(t, state.palette);
     if (state.reducedMotion) renderSingleFrame(0); else startLoop();
   }
@@ -730,7 +1405,7 @@ async function bootSpaceScene() {
     if (!state.paused) startLoop();
   }
 
-  const pause = () => { state.paused = true; stopLoop(); };
+  const pause = () => { state.paused = true; finishDrag(true); clearHover(); stopLoop(); };
   const resume = () => { state.paused = false; startLoop(); };
 
   const api = { warp, setTheme, pause, resume };
@@ -754,13 +1429,10 @@ async function bootSpaceScene() {
   if (typeof ResizeObserver !== "undefined") new ResizeObserver(onResize).observe(stageEl);
   else window.addEventListener("resize", onResize, { passive: true });
 
-  window.addEventListener("pointermove", (e) => {
-    if (state.isTouch || state.reducedMotion || e.pointerType === "touch") return;
-    state.targetMouseX = clamp((e.clientX / (window.innerWidth || 1)) * 2 - 1, -1, 1);
-    state.targetMouseY = clamp(-((e.clientY / (window.innerHeight || 1)) * 2 - 1), -1, 1);
-  }, { passive: true });
-
-  document.addEventListener("visibilitychange", () => (document.hidden ? stopLoop() : startLoop()));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { finishDrag(true); clearHover(); stopLoop(); }
+    else startLoop();
+  });
   document.addEventListener("themechange", (e) => setTheme(e && e.detail && e.detail.theme ? e.detail.theme : document.documentElement.dataset.theme));
   document.addEventListener("space:warp", warp);
 

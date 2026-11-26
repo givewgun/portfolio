@@ -504,6 +504,8 @@ html[data-theme="arcane"] .nav__logo-mark::after { display: none; }
    HERO
    ========================================================================== */
 .hero {
+  /* horizontal touch drags reach the globe (drag-to-spin); vertical still scrolls */
+  touch-action: pan-y pinch-zoom;
   position: relative; min-height: 100svh;
   display: flex; flex-direction: column; justify-content: center;
   padding: 7.5rem var(--gutter) 6rem;
@@ -1023,6 +1025,7 @@ html[data-theme="arcane"] .contact__title { letter-spacing: 0.01em; font-weight:
 .footer__note { font-size: 0.8rem; color: var(--text-dim); max-width: 480px; }
 .footer__note a { color: var(--text-soft); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
 .footer__note a:hover { color: var(--accent); }
+.footer__credit { font-size: 0.72rem; color: var(--text-dim); opacity: 0.85; }
 .iss-radar:empty { display: none; }
 @media (max-width: 860px) { .footer__inner { grid-template-columns: 1fr; } }
 
